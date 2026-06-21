@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>LetterCut</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- App styles -->
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/map.css">
+  <link rel="stylesheet" href="css/leaderboard.css">
+  <link rel="stylesheet" href="css/upload.css">
+  <link rel="stylesheet" href="css/profile.css">
+  <link rel="stylesheet" href="css/modals.css">
+
+  <style>
+    /* ── LOGIN SCREEN ── */
+    #login-screen {
+      position: absolute; inset: 0; z-index: 8000;
+      background: var(--ink);
+      flex-direction: column; align-items: center; justify-content: center;
+      /* display toggled by app.js */
+    }
+    .auth-inner {
+      display: flex; flex-direction: column; align-items: center;
+      animation: splashIn .5s cubic-bezier(.22,1,.36,1) both;
+    }
+    .auth-logo {
+      font-family: 'Playfair Display', serif; font-weight: 900;
+      font-size: 44px; letter-spacing: -.5px; color: var(--paper); line-height: 1;
+    }
+    .auth-logo span { color: var(--red); font-style: italic; }
+    .auth-tag {
+      font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1.2px;
+      text-transform: uppercase; color: var(--warm); margin-top: 10px;
+    }
+    .auth-city {
+      font-family: 'DM Mono', monospace; font-size: 11px;
+      color: var(--muted); margin-top: 5px;
+    }
+    .auth-google-btn {
+      display: flex; align-items: center; gap: 12px;
+      background: white; color: #3c4043;
+      border: none; border-radius: 30px;
+      padding: 14px 28px; margin-top: 52px;
+      font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0,0,0,.4);
+      transition: transform .14s, box-shadow .14s;
+    }
+    .auth-google-btn:active { transform: scale(.97); box-shadow: 0 2px 10px rgba(0,0,0,.3); }
+    .auth-divider {
+      font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: .8px;
+      color: var(--muted); margin-top: 40px; text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div id="toast"></div>
+
+  <!-- ══ LOGIN SCREEN ══ -->
+  <div id="login-screen" style="display:none">
+    <div class="auth-inner">
+      <div class="auth-logo">Letter<span>Cut</span></div>
+      <div class="auth-tag">Find letters. Spell the city.</div>
+      <div class="auth-city">Vienna</div>
+      <button id="btn-google-signin" class="auth-google-btn">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        Continue with Google
+      </button>
+      <div class="auth-divider">LetterCut · student prototype</div>
+    </div>
+  </div>
+
+  <!-- ══ SPLASH ══ -->
+  <div id="splash">
+    <div class="splash-inner">
+      <div class="splash-logo">Letter<span>Cut</span></div>
+      <div class="splash-tag">Find letters. Spell the city.</div>
+      <div class="splash-pin">L</div>
+    </div>
+  </div>
+
+  <!-- ══ MAP ══ -->
+  <div id="screen-map" class="screen active">
+    <div id="map"></div>
+    <div class="map-topbar">
+      <div class="map-logo">Letter<span>Cut</span></div>
+      <div class="map-mode-bar">
+        <button class="mode-btn active" id="btn-explore" onclick="setMode('explore')">Explore</button>
+        <button class="mode-btn"        id="btn-walk"    onclick="setMode('walk')">Walk</button>
+      </div>
+    </div>
+    <div id="proximity-notice">📍 Move closer to collect this letter</div>
+    <div class="map-controls">
+      <div class="map-ctrl" onclick="mapInstance.zoomIn()">+</div>
+      <div class="map-ctrl" onclick="mapInstance.zoomOut()">−</div>
+      <div class="map-ctrl" onclick="mapCenter()" style="font-size:14px">◎</div>
+    </div>
+    <div id="walk-bar">
+      <div class="wlbl">Word so far</div>
+      <div id="walk-chips"><span class="wempty">tap nearby pins to collect…</span></div>
+      <div id="walk-actions">
+        <button onclick="undoLastLetter()">↩ Undo</button>
+        <button onclick="finishWord()">Finish word →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ LEADERBOARD ══ -->
+  <div id="screen-leaderboard" class="screen">
+    <div class="page-head">
+      <div class="page-eyebrow">Rankings</div>
+      <div class="page-title">Leader-<br>board</div>
+      <div class="page-sub">Vienna · Updated live</div>
+    </div>
+    <div class="lb-tabs">
+      <button class="lb-tab active" onclick="lbTab(this,'weekly')">This week</button>
+      <button class="lb-tab"        onclick="lbTab(this,'alltime')">All time</button>
+      <button class="lb-tab"        onclick="lbTab(this,'nearby')">Nearby</button>
+    </div>
+    <div id="lb-list"></div>
+  </div>
+
+  <!-- ══ UPLOAD ══ -->
+  <div id="screen-upload" class="screen">
+    <div class="page-head">
+      <div class="page-eyebrow">Contribute</div>
+      <div class="page-title">Add a<br>Letter</div>
+      <div class="page-sub">Spot a letter in the city? Pin it.</div>
+    </div>
+    <div class="upload-body">
+
+      <!-- Photo -->
+      <div>
+        <div class="fld-lbl">Photo</div>
+        <div class="photo-zone" id="photo-zone">
+          <div class="ph-icon">📷</div>
+          <p>Add a photo of the letter</p>
+          <img id="preview-img" alt="">
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="upload-photo-btn ink"   onclick="document.getElementById('file-camera').click()">📷 Camera</button>
+          <button class="upload-photo-btn cream" onclick="document.getElementById('file-gallery').click()">🖼 Gallery</button>
+        </div>
+        <!-- capture="environment" opens rear camera directly on Android/iOS -->
+        <input type="file" accept="image/*" capture="environment" id="file-camera"  style="display:none" onchange="previewPhoto(event)">
+        <input type="file" accept="image/*"                       id="file-gallery" style="display:none" onchange="previewPhoto(event)">
+      </div>
+
+      <!-- Letter picker -->
+      <div>
+        <div class="fld-lbl">Which letter?</div>
+        <div class="letter-picker" id="letter-picker"></div>
+      </div>
+
+      <!-- Description -->
+      <div>
+        <div class="fld-lbl">Description</div>
+        <textarea class="txt-input" rows="2" id="upload-desc" placeholder="e.g. Neon R above the pharmacy entrance…"></textarea>
+      </div>
+
+      <!-- Location -->
+      <div>
+        <div class="fld-lbl">Location</div>
+        <!-- <div class="loc-field" style="margin-bottom:8px;"> 
+           <div class="loc-dot searching" id="loc-dot"></div> 
+           <span id="loc-text">Waiting for GPS…</span> </div> -->
+
+        <!-- Address search: user can type a place/address and the pin will move there -->
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input id="loc-search-input" class="txt-input" placeholder="Search address or place (e.g. Gorzinger Strasse 31, Vienna)" onkeydown="if(event.key==='Enter'){ geocodeLocation(); }">
+            <button class="mbtn" onclick="geocodeLocation()">Find</button>
+          </div>
+          <div id="loc-search-suggestions" style="display:none;background:var(--paper);border:1px solid rgba(0,0,0,.06);border-radius:6px;padding:6px;max-height:160px;overflow:auto;font-size:13px;color:var(--ink)"></div>
+        </div>
+        <button class="upload-map-btn" onclick="openLocationPicker()">
+          📍 &nbsp;Or tap map to place pin manually →
+        </button>
+        <div id="loc-map-hint" class="loc-map-hint" style="display:none;">
+          Tap anywhere on the map to set location, then come back here.
+        </div>
+      </div>
+
+      <button class="submit-btn" id="submit-btn" onclick="submitLetter()">Pin it to the map →</button>
+    </div>
+  </div>
+
+  <!-- ══ PROFILE ══ -->
+  <div id="screen-profile" class="screen">
+    <div class="profile-hero">
+      <div class="profile-av" id="profile-av-letter">K</div>
+      <div class="profile-text">
+        <div class="profile-name"   id="profile-name">Krystal Simpson</div>
+        <div class="profile-handle" id="profile-handle">@krystal_s · Vienna</div>
+        <div class="profile-badge"  id="profile-rank-badge">★ Rank #4 this week</div>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-cell"><div class="stat-n" id="stat-pts">142</div><div class="stat-l">Points</div></div>
+      <div class="stat-cell"><div class="stat-n" id="stat-letters">38</div><div class="stat-l">Letters</div></div>
+      <div class="stat-cell"><div class="stat-n" id="stat-walks">9</div><div class="stat-l">Walks</div></div>
+    </div>
+    <div class="sec-head">Words collected</div>
+    <div id="profile-reports-row" class="profile-reports" style="display:none;cursor:pointer" onclick="openReportsList()">Reports</div>
+    <div class="words-wrap" id="words-wrap"></div>
+    <div class="sec-head">Recent journeys</div>
+    <div class="journey-list" id="journey-list"></div>
+    <div class="sec-head">Settings</div>
+    <div class="settings-list">
+      <div class="setting-row"><span class="s-icon">📍</span><span class="s-lbl">Share location</span><div class="toggle on" onclick="toggleLocation(this)"></div></div>
+  <div class="setting-row"><span class="s-icon">🔔</span><span class="s-lbl">Notifications</span><div id="toggle-notifications" class="toggle on" onclick="toggleNotifications(this)"></div></div>
+      <div class="setting-row" onclick="showToast('Language settings — coming soon')"><span class="s-icon">🌍</span><span class="s-lbl">Language</span><span class="s-arr">›</span></div>
+      <div class="setting-row" onclick="showToast('LetterCut v0.3 — student prototype')"><span class="s-icon">ℹ</span><span class="s-lbl">About LetterCut</span><span class="s-arr">›</span></div>
+    </div>
+  </div>
+
+  <!-- ══ BOTTOM NAV ══ -->
+  <nav id="bottom-nav">
+    <button class="nav-item" onclick="goTo('leaderboard')">
+      <svg viewBox="0 0 24 24"><path d="M4 20V10M9 20V4M14 20v-6M19 20v-9"/></svg>
+      Ranks
+    </button>
+    <button class="nav-item active" onclick="goTo('map')">
+      <svg viewBox="0 0 24 24"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+      Map
+    </button>
+    <div class="fab-wrap">
+      <div id="fab-btn" class="fab" onclick="toggleUpload()"><span class="fab-icon">＋</span></div>
+    </div>
+    <button class="nav-item" onclick="goTo('profile')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      Profile
+    </button>
+  </nav>
+
+  <!-- ══ LETTER MODAL ══ -->
+  <div class="modal-overlay" id="letter-modal" onclick="closeModal('letter-modal')">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="ml-header">
+        <div class="ml-badge" id="ml-char">A</div>
+        <div class="ml-info">
+          <div class="ml-title" id="ml-title">Letter "A"</div>
+          <div class="ml-meta" id="ml-meta">By @someone · Vienna</div>
+          <div class="ml-time" id="ml-time"></div>
+          <div class="ml-desc" id="ml-desc"></div>
+        </div>
+  <button id="ml-edit-btn" class="ml-edit-btn" onclick="editCurrentLetter()" style="display:none">Edit</button>
+ <button id="ml-delete-btn" class="ml-delete-btn" onclick="confirmDeleteCurrent()" style="display:none">Delete</button>
+  <button id="ml-report-btn" class="ml-report-btn" onclick="openReportModal()" style="display:none">Report</button>
+      </div>
+      <div class="ml-photo" id="ml-photo"></div>
+      <div class="proximity-warning" id="prox-warn">
+        📍 You're too far away<br>
+        <span id="prox-dist-text" style="opacity:.7;font-size:11px"></span>
+      </div>
+      <div class="modal-actions">
+        <button class="mbtn"     onclick="closeModal('letter-modal')">Close</button>
+        <button class="mbtn pri" id="ml-collect" onclick="collectLetter()">Collect</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ POSTCARD MODAL ══ -->
+  <div class="modal-overlay" id="postcard-modal" onclick="closeModal('postcard-modal')">
+    <div class="modal-sheet" onclick="event.stopPropagation()" style="padding-bottom:28px">
+      <div class="modal-handle"></div>
+      <div class="postcard-box">
+        <div class="postcard-eyebrow">Walk complete</div>
+        <div class="postcard-word" id="pc-word">WIEN</div>
+        <div class="postcard-date" id="pc-date">Vienna · today</div>
+      </div>
+      <div class="pc-stats">
+        <div class="pc-stat"><div class="pc-n" id="pc-letters">4</div><div class="pc-l">Letters</div></div>
+        <div class="pc-stat"><div class="pc-n" id="pc-dist">—</div><div class="pc-l">Distance</div></div>
+        <div class="pc-stat"><div class="pc-n" id="pc-pts">+40</div><div class="pc-l">Points</div></div>
+      </div>
+      <div class="word-check checking" id="word-check">
+        <span class="wc-icon">⏳</span>
+        <div><div class="wc-text">Checking dictionary…</div></div>
+      </div>
+      <button class="share-btn" onclick="showToast('Share sheet would open here 📲');closeModal('postcard-modal')">Share postcard</button>
+      <button class="mbtn"      onclick="closeModal('postcard-modal')">Back to map</button>
+    </div>
+  </div>
+
+  <!-- ══ DELETE CONFIRMATION MODAL ══ -->
+  <div class="modal-overlay" id="delete-confirm-modal" onclick="closeModal('delete-confirm-modal')">
+    <div class="modal-sheet" onclick="event.stopPropagation()" style="max-width:480px;margin:0 auto;">
+      <div class="modal-handle"></div>
+      <div style="margin-bottom:12px;font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)">Delete letter</div>
+      <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin-bottom:10px" id="del-confirm-title">Are you sure?</div>
+      <div style="font-family:'DM Sans',sans-serif;color:var(--muted);margin-bottom:18px" id="del-confirm-body">This action cannot be undone.</div>
+      <div style="display:flex;gap:10px;">
+        <button class="mbtn" onclick="closeModal('delete-confirm-modal')">Cancel</button>
+        <button class="mbtn pri" id="del-confirm-btn" style="background:transparent;color:var(--red);border-color:transparent" onclick="deleteCurrentLetter()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ REPORT MODAL ══ -->
+  <div class="modal-overlay" id="report-modal" onclick="closeModal('report-modal')">
+    <div class="modal-sheet" onclick="event.stopPropagation()" style="max-width:480px;margin:0 auto;">
+      <div class="modal-handle"></div>
+      <div style="margin-bottom:12px;font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)">Report letter</div>
+      <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin-bottom:10px">Why are you reporting this?</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
+        <button class="mbtn" onclick="submitReport('A')">The picture is inappropriate</button>
+        <button class="mbtn" onclick="submitReport('B')">There is no letter in the picture</button>
+        <button class="mbtn" onclick="submitReport('C')">There is an incorrect letter/place</button>
+        <button class="mbtn" onclick="submitReport('D')">Copyright reasons</button>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="mbtn" onclick="closeModal('report-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ REPORTED LETTER REVIEW MODAL (for owners) ══ -->
+  <div class="modal-overlay" id="reported-review-modal" onclick="closeModal('reported-review-modal')">
+    <div class="modal-sheet" onclick="event.stopPropagation()" style="max-width:480px;margin:0 auto;">
+      <div class="modal-handle"></div>
+      <div id="rr-title" style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin-bottom:10px"></div>
+      <div id="rr-body" style="font-family:'DM Sans',sans-serif;color:var(--muted);margin-bottom:18px"></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="mbtn" onclick="reportedDelete()">Delete the letter</button>
+        <button class="mbtn" onclick="reportedChangeInfo()">Change information</button>
+        <button class="mbtn" onclick="reportedDismiss()">The report is incorrect</button>
+      </div>
+    </div>
+
+      <!-- ══ REPORTS LIST MODAL (owner view) ══ -->
+      <div class="modal-overlay" id="reports-list-modal" onclick="closeModal('reports-list-modal')">
+        <div class="modal-sheet" onclick="event.stopPropagation()" style="max-width:480px;margin:0 auto;">
+          <div class="modal-handle"></div>
+          <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin-bottom:10px">Reports</div>
+          <div id="reports-list" style="display:flex;flex-direction:column;gap:10px"></div>
+          <div style="margin-top:12px"><button class="mbtn" onclick="closeModal('reports-list-modal')">Close</button></div>
+        </div>
+      </div>
+
+  </div>
+
+</div><!-- /app -->
+
+<script type="module" src="js/app.js"></script>
+
+</body>
+</html>
