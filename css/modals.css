@@ -1,0 +1,157 @@
+/* ══════════════════════════════════════════
+   LETTERCUT — modals.css
+   Letter modal, postcard modal, word check
+══════════════════════════════════════════ */
+
+.modal-overlay {
+  display: none; position: absolute; inset: 0;
+  background: rgba(18,12,10,.7); z-index: 2000; align-items: flex-end;
+  backdrop-filter: blur(2px);
+}
+.modal-overlay.open { display: flex; animation: fadeIn .2s ease; }
+
+.modal-sheet {
+  width: 100%; background: var(--paper);
+  border-radius: 20px 20px 0 0; padding: 20px 22px;
+  animation: slideUp .26s cubic-bezier(.22,1,.36,1);
+  max-height: 90dvh; overflow-y: auto;
+  position: relative; /* allow absolute-positioned header controls */
+}
+.modal-handle {
+  width: 36px; height: 4px; background: var(--cream2);
+  border-radius: 2px; margin: 0 auto 22px;
+}
+
+/* ── LETTER MODAL ── */
+.ml-header { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+.ml-badge {
+  width: 66px; height: 66px; border-radius: 50%; background: var(--ink); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 700;
+  color: var(--paper); border: 2.5px solid var(--cream2);
+}
+.ml-info { flex: 1; padding-top: 6px; }
+.ml-title { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; line-height: 1; }
+.ml-meta  { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); margin-top: 5px; }
+.ml-time  { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); margin-top: 4px; }
+.ml-desc  { font-size: 15px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+
+/* Small delete button in letter modal header (top-right) */
+.ml-delete-btn {
+  position: absolute; right: 22px; top: 96px;
+  background: transparent; border: 1px solid rgba(0,0,0,0.06);
+  color: var(--red); padding: 8px 10px; border-radius: 8px; cursor: pointer;
+  font-family: 'DM Mono', monospace; font-size: 11px;
+  min-width: 72px; text-align: center;
+}
+.ml-delete-btn:hover { background: rgba(191,44,30,.04); }
+
+/* Report button (for non-owned letters) */
+.ml-report-btn {
+  position: absolute; right: 22px; top: 57px;
+  background: transparent; border: 1px solid rgba(0,0,0,0.06);
+  color: #444; padding: 8px 10px; border-radius: 8px; cursor: pointer;
+  font-family: 'DM Mono', monospace; font-size: 11px;
+  min-width: 72px; text-align: center;
+}
+.ml-report-btn:hover { background: rgba(0,0,0,.03); }
+
+/* Edit button for owners (next to delete) */
+.ml-edit-btn {
+  position: absolute; right: 22px; top: 57px;
+  background: transparent; border: 1px solid rgba(0,0,0,0.06);
+  color: #444; padding: 8px 10px; border-radius: 8px; cursor: pointer;
+  font-family: 'DM Mono', monospace; font-size: 11px;
+  min-width: 72px; text-align: center;
+}
+.ml-edit-btn:hover { background: rgba(0,0,0,.03); }
+
+/* Profile warning for reported letters */
+.profile-warning {
+  background: rgba(191,44,30,.06); border: 1.5px solid rgba(191,44,30,.18);
+  color: var(--red); padding: 12px 14px; border-radius: 10px; margin-bottom: 12px;
+  font-family: 'DM Mono', monospace; font-size: 13px; cursor: pointer;
+}
+
+.profile-reports {
+  font-family: 'DM Mono', monospace; font-size: 13px; color: var(--ink);
+  padding: 12px 14px; border-radius: 10px; margin: 12px 22px; background: var(--cream);
+  text-transform: uppercase; letter-spacing: .6px; display: block;
+}
+
+.report-item {
+  padding: 10px 12px; border: 1px solid var(--cream2); border-radius: 8px;
+  display:flex; justify-content: space-between; align-items: center; gap:8px;
+}
+.report-item .ri-info { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--muted); }
+.report-item .ri-actions { display:flex; gap:8px; }
+
+.ml-photo {
+  width: 100%; height: 170px; border-radius: var(--radius);
+  overflow: hidden; margin-bottom: 18px;
+  background: var(--cream); display: flex; align-items: center; justify-content: center;
+  font-size: 48px;
+}
+.ml-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Proximity warning */
+.proximity-warning {
+  display: none; background: rgba(191,44,30,.08);
+  border: 1.5px solid rgba(191,44,30,.25); border-radius: 10px;
+  padding: 12px 14px; margin-bottom: 14px;
+  font-family: 'DM Mono', monospace; font-size: 12px; color: var(--red);
+  text-align: center; line-height: 1.6;
+}
+.proximity-warning.show { display: block; }
+
+.modal-actions { display: flex; gap: 10px; }
+
+/* ── POSTCARD MODAL ── */
+.postcard-box {
+  background: var(--ink); border-radius: 14px; padding: 28px 24px;
+  margin-bottom: 20px; position: relative; overflow: hidden;
+}
+.postcard-eyebrow {
+  font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--red); margin-bottom: 10px;
+}
+.postcard-word {
+  font-family: 'Playfair Display', serif; font-size: 50px; font-weight: 900;
+  color: var(--paper); letter-spacing: 6px; line-height: 1;
+}
+.postcard-date {
+  font-family: 'DM Mono', monospace; font-size: 11px; color: var(--warm); margin-top: 10px;
+}
+
+.pc-stats {
+  display: flex; margin: 20px 0;
+  border: 1.5px solid var(--cream2); border-radius: var(--radius); overflow: hidden;
+}
+.pc-stat {
+  flex: 1; text-align: center; padding: 16px 8px; border-right: 1px solid var(--cream2);
+}
+.pc-stat:last-child { border-right: none; }
+.pc-n { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 700; color: var(--red); line-height: 1; }
+.pc-l { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 4px; }
+
+.share-btn {
+  width: 100%; padding: 18px; background: var(--red); color: white; border: none;
+  border-radius: var(--radius); font-family: 'DM Mono', monospace; font-size: 13px;
+  letter-spacing: .8px; text-transform: uppercase; cursor: pointer; margin-bottom: 10px;
+  box-shadow: 0 4px 16px rgba(191,44,30,.35); transition: opacity .13s;
+}
+.share-btn:active { opacity: .88; }
+
+/* ── WORD VALIDITY BADGE ── */
+.word-check {
+  display: flex; align-items: center; gap: 10px;
+  padding: 13px 16px; border-radius: var(--radius);
+  margin-bottom: 16px; font-family: 'DM Mono', monospace; font-size: 12px;
+  border: 1.5px solid var(--cream2); background: var(--cream); min-height: 48px;
+}
+.word-check.checking { color: var(--muted); }
+.word-check.valid    { background: rgba(34,120,60,.07); border-color: rgba(34,120,60,.3); color: #1a6632; }
+.word-check.invalid  { background: rgba(191,44,30,.06); border-color: rgba(191,44,30,.25); color: var(--red); }
+.wc-icon { font-size: 18px; flex-shrink: 0; }
+.wc-text { flex: 1; line-height: 1.5; }
+.wc-def  { font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--muted); margin-top: 3px; font-style: italic; }

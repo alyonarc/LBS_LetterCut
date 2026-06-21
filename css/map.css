@@ -1,0 +1,134 @@
+/* ══════════════════════════════════════════
+   LETTERCUT — map.css
+   Map screen, pins, walk bar, mode toggle
+══════════════════════════════════════════ */
+
+#screen-map { position: relative; }
+#map { flex: 1; min-height: 0; z-index: 1; }
+
+/* Leaflet overrides */
+.leaflet-container { background: var(--cream); font-family: 'DM Sans', sans-serif; }
+.leaflet-control-attribution { font-size: 9px !important; }
+.leaflet-control-zoom { display: none; }
+
+/* ── LETTER PIN ── */
+.lc-pin {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700;
+  color: var(--paper); cursor: pointer;
+  border: 2.5px solid rgba(255,255,255,.6);
+  box-shadow: 0 3px 10px rgba(0,0,0,.25);
+  transition: transform .15s, box-shadow .15s;
+}
+.lc-pin.mine  { background: var(--red); border-color: white; }
+.lc-pin.other { background: var(--ink); }
+.lc-pin.nearby { box-shadow: 0 0 0 4px rgba(191,44,30,.3), 0 3px 10px rgba(0,0,0,.25); }
+.lc-pin:hover  { transform: scale(1.12); box-shadow: 0 5px 16px rgba(0,0,0,.3); }
+
+/* Pulsing proximity ring */
+.lc-pin.nearby::after {
+  content: ''; position: absolute; inset: -8px; border-radius: 50%;
+  border: 2px solid var(--red); opacity: .5;
+  animation: ring 1.8s ease-out infinite;
+}
+
+/* ── MAP TOP BAR ── */
+.map-topbar {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 500;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px 8px;
+  background: linear-gradient(to bottom, rgba(244,239,230,.98) 70%, rgba(244,239,230,0));
+  pointer-events: none;
+}
+.map-logo {
+  font-family: 'Playfair Display', serif; font-weight: 900;
+  font-size: 24px; letter-spacing: -.5px; color: var(--ink);
+  pointer-events: all; line-height: 1;
+}
+.map-logo span { color: var(--red); font-style: italic; }
+
+/* ── MODE TOGGLE ── */
+.map-mode-bar {
+  display: flex; pointer-events: all;
+  background: var(--ink); border-radius: 30px; padding: 3px; overflow: hidden;
+}
+.mode-btn {
+  padding: 7px 18px; border: none; background: none;
+  color: #7a6a60; font-family: 'DM Mono', monospace;
+  font-size: 11px; letter-spacing: .4px; text-transform: uppercase;
+  cursor: pointer; border-radius: 24px; transition: background .18s, color .18s;
+}
+.mode-btn.active { background: var(--red); color: white; }
+
+/* ── MAP CONTROLS ── */
+.map-controls {
+  position: absolute; right: 14px; bottom: 22px; z-index: 500;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.map-ctrl {
+  width: 40px; height: 40px; background: var(--paper);
+  border: 1.5px solid var(--cream2); border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 20px; font-weight: 300;
+  color: var(--ink); box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  user-select: none; transition: background .12s;
+}
+.map-ctrl:active { background: var(--cream); }
+
+/* ── WALK BAR ── */
+#walk-bar {
+  display: none; position: absolute; bottom: 14px; left: 14px; right: 62px;
+  background: var(--ink); border-radius: var(--radius);
+  padding: 12px 16px; z-index: 500;
+  box-shadow: 0 4px 20px rgba(0,0,0,.3);
+}
+#walk-bar.on { display: block; animation: reveal .2s ease; }
+
+.wlbl {
+  font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: .8px;
+  text-transform: uppercase; color: var(--warm); margin-bottom: 8px;
+}
+#walk-chips {
+  display: flex; gap: 6px; flex-wrap: wrap; min-height: 34px; align-items: center;
+}
+.wchip {
+  width: 32px; height: 32px; background: var(--red); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Playfair Display', serif; font-weight: 700; font-size: 17px; color: white;
+  animation: pop .22s cubic-bezier(.34,1.56,.64,1);
+}
+.wempty {
+  font-family: 'DM Mono', monospace; font-size: 11px; color: #5a504a; font-style: italic;
+}
+
+/* Walk action buttons (undo + finish) */
+#walk-actions {
+  display: none; margin-top: 10px; gap: 8px;
+}
+#walk-actions button:first-child {
+  flex: 1; padding: 9px;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
+  border-radius: 8px; color: #a09080;
+  font-family: 'DM Mono', monospace; font-size: 11px; cursor: pointer; letter-spacing: .3px;
+}
+#walk-actions button:last-child {
+  flex: 2; padding: 9px;
+  background: var(--red); border: none;
+  border-radius: 8px; color: white;
+  font-family: 'DM Mono', monospace; font-size: 11px; cursor: pointer;
+  letter-spacing: .5px; text-transform: uppercase;
+}
+
+/* ── PROXIMITY NOTICE ── */
+#proximity-notice {
+  display: none; position: absolute; top: 62px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink); color: var(--paper);
+  padding: 9px 18px; border-radius: 30px;
+  font-family: 'DM Mono', monospace; font-size: 11px;
+  white-space: nowrap; z-index: 500;
+  box-shadow: 0 4px 16px rgba(0,0,0,.3);
+  animation: reveal .2s ease;
+}
+#proximity-notice.show { display: block; }
