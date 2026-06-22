@@ -5,6 +5,7 @@
 // ══════════════════════════════════════════
 
 let currentLetter = null;
+let postcardWalkPath = [];
 
 // Reports cache (session)
 // REPORTS is provided by mockdata.js; ensure it's available
@@ -466,6 +467,9 @@ async function showPostcard() {
 
   document.getElementById('postcard-modal').classList.add('open');
 
+  // Save path for postcard image before clearing
+  postcardWalkPath = [...walkPath];
+
   // Clean up walk state
   walkLetters = []; walkPath = [];
   if (walkPolyline) { mapInstance.removeLayer(walkPolyline); walkPolyline = null; }
@@ -473,6 +477,205 @@ async function showPostcard() {
 
   // Dictionary check (dictionaryapi.dev — free, no key needed)
   await checkWord(word, wc);
+}
+
+function buildPostcardCanvas() {
+  const word    = document.getElementById('pc-word').textContent    || '';
+  const date    = document.getElementById('pc-date').textContent    || '';
+  const letters = document.getElementById('pc-letters').textContent || '0';
+  const dist    = document.getElementById('pc-dist').textContent    || '—';
+  const pts     = document.getElementById('pc-pts').textContent     || '+0';
+  const wcEl    = document.getElementById('word-check');
+  const isValid = wcEl && wcEl.classList.contains('valid');
+  const wcText  = wcEl ? (wcEl.querySelector('.wc-text') || wcEl).textContent.trim() : '';
+  const hasRoute = postcardWalkPath.length >= 2;
+
+  const W = 640, DPR = 2;
+  const H = hasRoute ? 520 : 420;
+  const canvas = document.createElement('canvas');
+  canvas.width  = W * DPR;
+  canvas.height = H * DPR;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(DPR, DPR);
+
+  // Background
+  ctx.fillStyle = '#120c08';
+  ctx.fillRect(0, 0, W, H);
+
+  // Inner border
+  ctx.strokeStyle = 'rgba(255,255,255,.12)';
+  ctx.lineWidth = 1;
+  roundRect(ctx, 18, 18, W - 36, H - 36, 12);
+  ctx.stroke();
+
+  // Red accent bar
+  ctx.fillStyle = '#bf2c1e';
+  ctx.fillRect(W / 2 - 28, 16, 56, 4);
+
+  // Eyebrow
+  ctx.fillStyle = 'rgba(255,255,255,.45)';
+  ctx.font = '11px DM Mono, monospace';
+  ctx.letterSpacing = '1.5px';
+  ctx.textAlign = 'center';
+  ctx.fillText('WALK COMPLETE · VIENNA', W / 2, 58);
+
+  // Word
+  ctx.fillStyle = '#ffffff';
+  ctx.font = "bold 86px 'Playfair Display', Georgia, serif";
+  ctx.textAlign = 'center';
+  ctx.fillText(word, W / 2, 155);
+
+  // Date
+  ctx.fillStyle = 'rgba(255,255,255,.5)';
+  ctx.font = '13px DM Mono, monospace';
+  ctx.letterSpacing = '0px';
+  ctx.fillText(date, W / 2, 186);
+
+  // Divider
+  ctx.strokeStyle = 'rgba(255,255,255,.1)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(40, 208); ctx.lineTo(W - 40, 208); ctx.stroke();
+
+  // Stats
+  const stats = [
+    { n: letters, l: 'LETTERS' },
+    { n: dist,    l: 'DISTANCE' },
+    { n: pts,     l: 'POINTS' },
+  ];
+  stats.forEach((s, i) => {
+    const x = W / 4 + i * (W / 4);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = "bold 30px 'DM Mono', monospace";
+    ctx.textAlign = 'center';
+    ctx.fillText(s.n, x, 254);
+    ctx.fillStyle = 'rgba(255,255,255,.38)';
+    ctx.font = '10px DM Mono, monospace';
+    ctx.letterSpacing = '1px';
+    ctx.fillText(s.l, x, 274);
+  });
+
+  // Route mini-map
+  if (hasRoute) {
+    const path = postcardWalkPath;
+    const sX = 40, sY = 292, sW = W - 80, sH = 88, pad = 14;
+
+    ctx.fillStyle = 'rgba(255,255,255,.04)';
+    roundRect(ctx, sX, sY, sW, sH, 8);
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(255,255,255,.2)';
+    ctx.font = '9px DM Mono, monospace';
+    ctx.letterSpacing = '1px';
+    ctx.textAlign = 'left';
+    ctx.fillText('ROUTE', sX + 10, sY + 13);
+
+    const lats = path.map(p => p[0]);
+    const lngs = path.map(p => p[1]);
+    const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+    const midLat = (minLat + maxLat) / 2;
+    const cosLat = Math.cos(midLat * Math.PI / 180);
+    const latRange = maxLat - minLat || 0.0002;
+    const lngRangeCorr = (maxLng - minLng || 0.0002) * cosLat;
+    const scale = Math.min((sW - pad * 2) / lngRangeCorr, (sH - pad * 2) / latRange);
+    const rW = lngRangeCorr * scale, rH = latRange * scale;
+    const oX = sX + pad + (sW - pad * 2 - rW) / 2;
+    const oY = sY + pad + (sH - pad * 2 - rH) / 2;
+    const toX = lng => oX + (lng - minLng) * cosLat * scale;
+    const toY = lat => oY + rH - (lat - minLat) * scale;
+
+    ctx.strokeStyle = '#bf2c1e';
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(toX(path[0][1]), toY(path[0][0]));
+    for (let i = 1; i < path.length; i++) ctx.lineTo(toX(path[i][1]), toY(path[i][0]));
+    ctx.stroke();
+
+    // Start dot (white)
+    ctx.fillStyle = 'rgba(255,255,255,.7)';
+    ctx.beginPath();
+    ctx.arc(toX(path[0][1]), toY(path[0][0]), 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // End dot (red, larger)
+    ctx.fillStyle = '#bf2c1e';
+    ctx.beginPath();
+    ctx.arc(toX(path[path.length-1][1]), toY(path[path.length-1][0]), 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.4)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // Word check strip
+  const wcY = hasRoute ? 394 : 296;
+  if (wcText) {
+    ctx.fillStyle = isValid ? 'rgba(50,160,80,.25)' : 'rgba(255,255,255,.06)';
+    roundRect(ctx, 40, wcY, W - 80, 52, 8);
+    ctx.fill();
+    ctx.fillStyle = isValid ? '#6ddb94' : 'rgba(255,255,255,.55)';
+    ctx.font = '12px DM Mono, monospace';
+    ctx.letterSpacing = '0px';
+    ctx.textAlign = 'center';
+    const maxLen = 60;
+    ctx.fillText(wcText.length > maxLen ? wcText.slice(0, maxLen) + '…' : wcText, W / 2, wcY + 31);
+  }
+
+  // Branding
+  ctx.fillStyle = 'rgba(255,255,255,.22)';
+  ctx.font = '11px DM Mono, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('lettercut · find letters · spell the city', W / 2, H - 22);
+
+  return canvas;
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+async function sharePostcard() {
+  await document.fonts.ready;
+  const canvas = buildPostcardCanvas();
+  const word = document.getElementById('pc-word').textContent || 'word';
+
+  canvas.toBlob(async blob => {
+    const file = new File([blob], 'lettercut-postcard.png', { type: 'image/png' });
+    const text = `I just spelled "${word}" walking through Vienna! LetterCut`;
+    const url  = 'https://alyonarc.github.io/LBS_LetterCut/';
+
+    // Try sharing the image file (supported on mobile)
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'LetterCut', text });
+        return;
+      } catch (e) {
+        if (e.name === 'AbortError') return;
+      }
+    }
+
+    // Fall back to sharing just text + URL
+    if (navigator.share) {
+      try { await navigator.share({ title: 'LetterCut', text, url }); return; }
+      catch (e) { if (e.name === 'AbortError') return; }
+    }
+
+    // Last resort: download the image
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'lettercut-postcard.png';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast('Postcard saved!');
+  }, 'image/png');
 }
 
 async function checkWord(word, el) {
