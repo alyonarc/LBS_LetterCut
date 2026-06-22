@@ -50,15 +50,8 @@ function openLetterModal(l, isUser) {
     img.alt = '';
     img.onerror = () => { photoEl.innerHTML = ''; photoEl.textContent = '📷'; photoEl.style.cursor = ''; };
 
-    const btnIn  = document.createElement('button');
-    const btnOut = document.createElement('button');
-    btnIn.className = btnOut.className = 'photo-zoom-btn';
-    btnIn.textContent = '+'; btnOut.textContent = '−';
-
     photoEl.innerHTML = '';
     photoEl.appendChild(img);
-    photoEl.appendChild(btnOut);
-    photoEl.appendChild(btnIn);
     photoEl.style.cursor = 'grab';
 
     let scale = 1, tx = 0, ty = 0;
@@ -72,9 +65,6 @@ function openLetterModal(l, isUser) {
       ty = Math.max(-my, Math.min(my, ty));
     };
     const apply = () => { img.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`; };
-
-    btnIn .addEventListener('click', e => { e.stopPropagation(); scale = Math.min(5, scale * 1.5); clamp(); apply(); });
-    btnOut.addEventListener('click', e => { e.stopPropagation(); scale = Math.max(1, scale / 1.5); tx = scale === 1 ? 0 : tx; ty = scale === 1 ? 0 : ty; clamp(); apply(); });
 
     img.addEventListener('touchstart', e => {
       activeTouches = [...e.touches];
