@@ -42,11 +42,18 @@ function openLetterModal(l, isUser) {
 
   // Photo
   const photoEl = document.getElementById('ml-photo');
-  if (isUser && l.photoUrl) {
-    photoEl.innerHTML = `<img src="${l.photoUrl}" alt="">`;
-  } else if (!isUser && PRELOADED_PHOTOS[l.id]) {
-    photoEl.innerHTML = `<img src="${PRELOADED_PHOTOS[l.id]}" alt="" onerror="this.parentElement.textContent='📷'">`;
+  const photoSrc = l.photoUrl || (typeof PRELOADED_PHOTOS !== 'undefined' && PRELOADED_PHOTOS[l.id]);
+  if (photoSrc) {
+    const img = document.createElement('img');
+    img.src = photoSrc;
+    img.alt = '';
+    img.style.cursor = 'zoom-in';
+    img.onerror = () => { photoEl.innerHTML = ''; photoEl.textContent = '📷'; };
+    img.addEventListener('click', () => openPhotoViewer(photoSrc));
+    photoEl.innerHTML = '';
+    photoEl.appendChild(img);
   } else {
+    photoEl.innerHTML = '';
     photoEl.textContent = '📷';
   }
 
@@ -431,4 +438,85 @@ async function checkWord(word, el) {
 // ── HELPERS ───────────────────────────────
 function closeModal(id) {
   document.getElementById(id).classList.remove('open');
+}
+
+// ── PHOTO VIEWER (pinch-to-zoom + drag) ──
+function openPhotoViewer(src) {
+  const overlay = document.createElement('div');
+  overlay.className = 'photo-viewer';
+  overlay.innerHTML = `
+    <button class="photo-viewer-close">✕</button>
+    <img class="photo-viewer-img" src="${src}" draggable="false" alt="">
+  `;
+  document.body.appendChild(overlay);
+
+  const img = overlay.querySelector('.photo-viewer-img');
+  let scale = 1, tx = 0, ty = 0;
+  let initScale, initTx, initTy, initDist, initMidX, initMidY;
+  let activeTouches = [];
+
+  function clamp() {
+    scale = Math.max(1, Math.min(6, scale));
+    const mx = Math.max(0, (scale - 1) * img.offsetWidth  / 2);
+    const my = Math.max(0, (scale - 1) * img.offsetHeight / 2);
+    tx = Math.max(-mx, Math.min(mx, tx));
+    ty = Math.max(-my, Math.min(my, ty));
+  }
+
+  function apply() {
+    img.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+  }
+
+  img.addEventListener('touchstart', e => {
+    e.preventDefault();
+    activeTouches = [...e.touches];
+    initScale = scale; initTx = tx; initTy = ty;
+    if (activeTouches.length === 2) {
+      initDist = Math.hypot(
+        activeTouches[1].clientX - activeTouches[0].clientX,
+        activeTouches[1].clientY - activeTouches[0].clientY
+      );
+      initMidX = (activeTouches[0].clientX + activeTouches[1].clientX) / 2;
+      initMidY = (activeTouches[0].clientY + activeTouches[1].clientY) / 2;
+    } else {
+      initMidX = activeTouches[0].clientX;
+      initMidY = activeTouches[0].clientY;
+    }
+  }, { passive: false });
+
+  img.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const cur = [...e.touches];
+    if (cur.length === 2 && activeTouches.length >= 2) {
+      const dist = Math.hypot(
+        cur[1].clientX - cur[0].clientX,
+        cur[1].clientY - cur[0].clientY
+      );
+      const midX = (cur[0].clientX + cur[1].clientX) / 2;
+      const midY = (cur[0].clientY + cur[1].clientY) / 2;
+      scale = initScale * (dist / initDist);
+      tx = initTx + (midX - initMidX);
+      ty = initTy + (midY - initMidY);
+    } else if (cur.length === 1 && scale > 1) {
+      tx = initTx + (cur[0].clientX - initMidX);
+      ty = initTy + (cur[0].clientY - initMidY);
+    }
+    clamp(); apply();
+  }, { passive: false });
+
+  // Double-tap to zoom in/out
+  let lastTap = 0;
+  img.addEventListener('touchend', e => {
+    const now = Date.now();
+    if (now - lastTap < 280) {
+      scale = scale > 1 ? 1 : 2.5;
+      tx = 0; ty = 0;
+      apply();
+    }
+    lastTap = now;
+    activeTouches = [...e.touches];
+  });
+
+  overlay.querySelector('.photo-viewer-close').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
 }
