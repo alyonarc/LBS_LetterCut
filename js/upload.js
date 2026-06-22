@@ -21,10 +21,27 @@ function pickLetter(el, l) {
 }
 
 // ── PHOTO ─────────────────────────────────
-function previewPhoto(e) {
+function compressImage(file, maxWidth = 900, quality = 0.75) {
+  return new Promise(resolve => {
+    const blobUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const ratio = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width  * ratio);
+      canvas.height = Math.round(img.height * ratio);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(blobUrl);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = blobUrl;
+  });
+}
+
+async function previewPhoto(e) {
   const f = e.target.files[0];
   if (!f) return;
-  uploadPhotoUrl = URL.createObjectURL(f);
+  uploadPhotoUrl = await compressImage(f);
   const img = document.getElementById('preview-img');
   img.src = uploadPhotoUrl;
   img.style.display = 'block';
