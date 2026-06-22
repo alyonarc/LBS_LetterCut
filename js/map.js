@@ -123,7 +123,10 @@ function startGPS() {
         }
       }
     },
-    err => console.warn('GPS error:', err.message),
+    err => {
+      console.warn('GPS error:', err.message);
+      if (err.code === 1) showToast('Location access denied — enable it in browser settings');
+    },
     { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
   );
 }
