@@ -26,7 +26,18 @@
 }
 #preview-img {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none;
+  transform-origin: center center; touch-action: none;
 }
+
+.upload-zoom-btn {
+  position: absolute; bottom: 10px;
+  width: 34px; height: 34px; border-radius: 50%;
+  background: rgba(0,0,0,.55); border: 1.5px solid rgba(255,255,255,.35);
+  color: #fff; font-size: 20px; cursor: pointer; z-index: 10;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.upload-zoom-btn:last-child        { right: 10px; }
+.upload-zoom-btn:nth-last-child(2) { right: 52px; }
 
 /* ── LETTER PICKER ── */
 .letter-picker { display: grid; grid-template-columns: repeat(9, 1fr); gap: 5px; }
