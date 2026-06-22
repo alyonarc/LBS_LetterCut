@@ -43,18 +43,100 @@ function openLetterModal(l, isUser) {
   // Photo
   const photoEl = document.getElementById('ml-photo');
   const photoSrc = l.photoUrl || (typeof PRELOADED_PHOTOS !== 'undefined' && PRELOADED_PHOTOS[l.id]);
+  photoEl.onclick = null;
   if (photoSrc) {
     const img = document.createElement('img');
     img.src = photoSrc;
     img.alt = '';
-    img.style.cursor = 'zoom-in';
-    img.onerror = () => { photoEl.innerHTML = ''; photoEl.textContent = '📷'; };
-    img.addEventListener('click', () => openPhotoViewer(photoSrc));
+    img.onerror = () => { photoEl.innerHTML = ''; photoEl.textContent = '📷'; photoEl.style.cursor = ''; };
+
+    const btnIn  = document.createElement('button');
+    const btnOut = document.createElement('button');
+    btnIn.className = btnOut.className = 'photo-zoom-btn';
+    btnIn.textContent = '+'; btnOut.textContent = '−';
+
     photoEl.innerHTML = '';
     photoEl.appendChild(img);
+    photoEl.appendChild(btnOut);
+    photoEl.appendChild(btnIn);
+    photoEl.style.cursor = 'grab';
+
+    let scale = 1, tx = 0, ty = 0;
+    let activeTouches = [], initScale, initTx, initTy, initDist, initMidX, initMidY;
+
+    const clamp = () => {
+      scale = Math.max(1, Math.min(5, scale));
+      const mx = (scale - 1) * img.offsetWidth  / 2;
+      const my = (scale - 1) * img.offsetHeight / 2;
+      tx = Math.max(-mx, Math.min(mx, tx));
+      ty = Math.max(-my, Math.min(my, ty));
+    };
+    const apply = () => { img.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`; };
+
+    btnIn .addEventListener('click', e => { e.stopPropagation(); scale = Math.min(5, scale * 1.5); clamp(); apply(); });
+    btnOut.addEventListener('click', e => { e.stopPropagation(); scale = Math.max(1, scale / 1.5); tx = scale === 1 ? 0 : tx; ty = scale === 1 ? 0 : ty; clamp(); apply(); });
+
+    img.addEventListener('touchstart', e => {
+      activeTouches = [...e.touches];
+      initScale = scale; initTx = tx; initTy = ty;
+      if (activeTouches.length === 2) {
+        e.preventDefault();
+        initDist = Math.hypot(activeTouches[1].clientX - activeTouches[0].clientX, activeTouches[1].clientY - activeTouches[0].clientY);
+        initMidX = (activeTouches[0].clientX + activeTouches[1].clientX) / 2;
+        initMidY = (activeTouches[0].clientY + activeTouches[1].clientY) / 2;
+      } else {
+        initMidX = activeTouches[0].clientX;
+        initMidY = activeTouches[0].clientY;
+      }
+    }, { passive: false });
+
+    img.addEventListener('touchmove', e => {
+      const cur = [...e.touches];
+      if (cur.length === 2) {
+        e.preventDefault();
+        const dist = Math.hypot(cur[1].clientX - cur[0].clientX, cur[1].clientY - cur[0].clientY);
+        scale = initScale * (dist / initDist);
+        tx = initTx + ((cur[0].clientX + cur[1].clientX) / 2 - initMidX);
+        ty = initTy + ((cur[0].clientY + cur[1].clientY) / 2 - initMidY);
+      } else if (cur.length === 1 && scale > 1) {
+        e.preventDefault();
+        tx = initTx + (cur[0].clientX - initMidX);
+        ty = initTy + (cur[0].clientY - initMidY);
+      }
+      clamp(); apply();
+    }, { passive: false });
+
+    let lastTap = 0;
+    img.addEventListener('touchend', e => {
+      activeTouches = [...e.touches];
+      const now = Date.now();
+      if (now - lastTap < 280) { scale = scale > 1 ? 1 : 2; tx = 0; ty = 0; apply(); }
+      lastTap = now;
+    });
+
+    let dragging = false, dragX, dragY, dragTx, dragTy;
+    img.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'touch') return;
+      e.preventDefault();
+      img.setPointerCapture(e.pointerId);
+      dragging = true; dragX = e.clientX; dragY = e.clientY; dragTx = tx; dragTy = ty;
+      img.style.cursor = 'grabbing';
+    });
+    img.addEventListener('pointermove', e => {
+      if (!dragging || e.pointerType === 'touch') return;
+      tx = dragTx + (e.clientX - dragX);
+      ty = dragTy + (e.clientY - dragY);
+      clamp(); apply();
+    });
+    img.addEventListener('pointerup', e => {
+      if (e.pointerType === 'touch') return;
+      dragging = false; img.style.cursor = 'grab';
+      img.releasePointerCapture(e.pointerId);
+    });
   } else {
     photoEl.innerHTML = '';
     photoEl.textContent = '📷';
+    photoEl.style.cursor = '';
   }
 
   updateCollectButton(l);
@@ -324,48 +406,46 @@ function confirmDeleteCurrent() {
   const body  = document.getElementById('del-confirm-body');
   title.textContent = `Delete letter "${currentLetter.letter}"?`;
   body.textContent = `Are you sure you want to delete letter "${currentLetter.letter}" forever?`;
+  const btn = document.getElementById('del-confirm-btn');
+  if (btn) { btn.disabled = false; btn.textContent = 'Delete'; }
   document.getElementById('delete-confirm-modal').classList.add('open');
 }
 
 async function deleteCurrentLetter() {
   if (!currentLetter) return;
 
-  // Optimistically close confirm and letter modal
+  const id = currentLetter.id;
+  const btn = document.getElementById('del-confirm-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Deleting…'; }
+
+  console.log('[delete] letter userId:', currentLetter.userId, '| current uid:', window.currentUserId, '| match:', currentLetter.userId === window.currentUserId);
+
+  if (window.firestoreDeleteLetter) {
+    try {
+      await window.firestoreDeleteLetter(id);
+    } catch (e) {
+      console.error('Delete failed:', e.code, e.message);
+      if (btn) { btn.disabled = false; btn.textContent = 'Delete'; }
+      showToast(e.code === 'permission-denied'
+        ? 'Permission denied — check Firestore rules'
+        : 'Could not delete — check your connection');
+      return;
+    }
+  }
+
+  // Delete succeeded (or no Firestore) — now remove from UI
   closeModal('delete-confirm-modal');
   closeModal('letter-modal');
 
-  const id = currentLetter.id;
-
-  // Remove marker from map
   if (markerMap.has(id)) {
     const m = markerMap.get(id);
     if (m) mapInstance.removeLayer(m);
     markerMap.delete(id);
   }
-
-  // Remove from userLetters (session) if present
   userLetters = userLetters.filter(u => u.id !== id);
-
-  // If Firestore delete helper is available, call it
-  if (window.firestoreDeleteLetter) {
-    try {
-      await window.firestoreDeleteLetter(id);
-      showToast('Letter deleted');
-    } catch (e) {
-      console.error('Delete failed:', e);
-      showToast('Could not delete letter — try again');
-    }
-  } else {
-    // Fallback: local removal only
-    showToast('Letter removed locally');
-  }
-
-  // Clear currentLetter
-  // Resolve any reports associated with this letter
   resolveReportsForLetter(id);
-  // Profile counting feature disabled — updateProfileCounts() call removed
-  // if (typeof updateProfileCounts === 'function') updateProfileCounts();
   currentLetter = null;
+  showToast('Letter deleted');
 }
 
 // ── POSTCARD MODAL ────────────────────────
@@ -440,83 +520,3 @@ function closeModal(id) {
   document.getElementById(id).classList.remove('open');
 }
 
-// ── PHOTO VIEWER (pinch-to-zoom + drag) ──
-function openPhotoViewer(src) {
-  const overlay = document.createElement('div');
-  overlay.className = 'photo-viewer';
-  overlay.innerHTML = `
-    <button class="photo-viewer-close">✕</button>
-    <img class="photo-viewer-img" src="${src}" draggable="false" alt="">
-  `;
-  document.body.appendChild(overlay);
-
-  const img = overlay.querySelector('.photo-viewer-img');
-  let scale = 1, tx = 0, ty = 0;
-  let initScale, initTx, initTy, initDist, initMidX, initMidY;
-  let activeTouches = [];
-
-  function clamp() {
-    scale = Math.max(1, Math.min(6, scale));
-    const mx = Math.max(0, (scale - 1) * img.offsetWidth  / 2);
-    const my = Math.max(0, (scale - 1) * img.offsetHeight / 2);
-    tx = Math.max(-mx, Math.min(mx, tx));
-    ty = Math.max(-my, Math.min(my, ty));
-  }
-
-  function apply() {
-    img.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
-  }
-
-  img.addEventListener('touchstart', e => {
-    e.preventDefault();
-    activeTouches = [...e.touches];
-    initScale = scale; initTx = tx; initTy = ty;
-    if (activeTouches.length === 2) {
-      initDist = Math.hypot(
-        activeTouches[1].clientX - activeTouches[0].clientX,
-        activeTouches[1].clientY - activeTouches[0].clientY
-      );
-      initMidX = (activeTouches[0].clientX + activeTouches[1].clientX) / 2;
-      initMidY = (activeTouches[0].clientY + activeTouches[1].clientY) / 2;
-    } else {
-      initMidX = activeTouches[0].clientX;
-      initMidY = activeTouches[0].clientY;
-    }
-  }, { passive: false });
-
-  img.addEventListener('touchmove', e => {
-    e.preventDefault();
-    const cur = [...e.touches];
-    if (cur.length === 2 && activeTouches.length >= 2) {
-      const dist = Math.hypot(
-        cur[1].clientX - cur[0].clientX,
-        cur[1].clientY - cur[0].clientY
-      );
-      const midX = (cur[0].clientX + cur[1].clientX) / 2;
-      const midY = (cur[0].clientY + cur[1].clientY) / 2;
-      scale = initScale * (dist / initDist);
-      tx = initTx + (midX - initMidX);
-      ty = initTy + (midY - initMidY);
-    } else if (cur.length === 1 && scale > 1) {
-      tx = initTx + (cur[0].clientX - initMidX);
-      ty = initTy + (cur[0].clientY - initMidY);
-    }
-    clamp(); apply();
-  }, { passive: false });
-
-  // Double-tap to zoom in/out
-  let lastTap = 0;
-  img.addEventListener('touchend', e => {
-    const now = Date.now();
-    if (now - lastTap < 280) {
-      scale = scale > 1 ? 1 : 2.5;
-      tx = 0; ty = 0;
-      apply();
-    }
-    lastTap = now;
-    activeTouches = [...e.touches];
-  });
-
-  overlay.querySelector('.photo-viewer-close').addEventListener('click', () => overlay.remove());
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-}
