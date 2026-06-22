@@ -124,8 +124,11 @@ function startGPS() {
       }
     },
     err => {
-      console.warn('GPS error:', err.message);
-      if (err.code === 1) showToast('Location access denied — enable it in browser settings');
+      console.warn('GPS error:', err.code, err.message);
+      const msg = err.code === 1 ? 'Location denied — enable in browser settings'
+                : err.code === 2 ? 'Location unavailable'
+                : 'Location timed out — try again';
+      showToast(msg);
     },
     { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
   );
