@@ -54,6 +54,9 @@ function setupPhotoZoom(img) {
   zone.appendChild(btnOut);
   zone.appendChild(btnIn);
 
+  img.draggable = false;
+  img.addEventListener('dragstart', e => e.preventDefault());
+
   const clamp = () => {
     photoScale = Math.max(1, Math.min(5, photoScale));
     const mx = (photoScale - 1) * img.offsetWidth  / 2;
