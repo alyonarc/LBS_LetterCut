@@ -87,7 +87,7 @@
 .report-item .ri-actions { display:flex; gap:8px; }
 
 .ml-photo {
-  width: 100%; height: 170px; border-radius: var(--radius);
+  width: 100%; height: 240px; border-radius: var(--radius);
   overflow: hidden; margin-bottom: 18px;
   background: var(--cream); display: flex; align-items: center; justify-content: center;
   font-size: 48px; position: relative;
