@@ -315,17 +315,21 @@ function editCurrentLetter() {
   if (currentLetter.photoUrl) {
     uploadPhotoUrl = currentLetter.photoUrl;
     const img = document.getElementById('preview-img');
-    img.src = uploadPhotoUrl; img.style.display = 'block';
+    img.src = uploadPhotoUrl;
+    const onReady = () => { img.style.display = 'block'; setupPhotoZoom(img); };
+    if (img.complete && img.naturalWidth) onReady();
+    else img.onload = onReady;
   }
   document.getElementById('upload-desc').value = currentLetter.desc || '';
   manualPos = { lat: currentLetter.lat, lng: currentLetter.lng };
-  window._pendingLocText = `${manualPos.lat.toFixed(5)}, ${manualPos.lng.toFixed(5)} (manual)`;
+  window._pendingLocText = `${manualPos.lat.toFixed(5)}, ${manualPos.lng.toFixed(5)} (pin location)`;
 
-  // editing id used by submit handler
   window._editingLetterId = currentLetter.id;
 
   closeModal('letter-modal');
   goTo('upload');
+  const btn = document.getElementById('submit-btn');
+  if (btn) btn.textContent = 'Save changes →';
 }
 
 function reportedChangeInfo() {
