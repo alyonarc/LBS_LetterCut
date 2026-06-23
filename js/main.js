@@ -53,18 +53,25 @@ function goTo(id) {
 function toggleUpload() {
   const uploadScreen = document.getElementById('screen-upload');
   if (uploadScreen.classList.contains('active')) {
-    // exit upload
     const fab = document.getElementById('fab-btn');
     if (fab) fab.classList.remove('fab-exit');
-    setTimeout(() => goTo('map'), 220);
+    cancelUpload();
   } else {
-    // enter upload
     goTo('upload');
   }
 }
 
 function cancelUpload() {
-  // For single-button FAB we just go back to map
+  // Reset the form fully
+  if (typeof resetUploadForm === 'function') resetUploadForm();
+  // Remove the manual location pin if placed
+  if (window._manualMarker) {
+    try { mapInstance.removeLayer(window._manualMarker); } catch (e) {}
+    window._manualMarker = null;
+  }
+  // Clear any active edit/report session
+  window._editingLetterId = null;
+  window._reportEditing   = null;
   setTimeout(() => goTo('map'), 220);
 }
 
