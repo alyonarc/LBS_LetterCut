@@ -227,8 +227,16 @@ async function submitLetter() {
 
     // Firestore update
     if (window.firestoreUpdateLetter) {
+      const eid = window._editingLetterId;
       try {
-        await window.firestoreUpdateLetter(window._editingLetterId, updateData);
+        await window.firestoreUpdateLetter(eid, updateData);
+        // Remove old marker and immediately re-add with updated data.
+        // Don't rely on the snapshot — it may fire before we delete from markerMap.
+        if (markerMap.has(eid)) {
+          mapInstance.removeLayer(markerMap.get(eid));
+          markerMap.delete(eid);
+        }
+        addMarker({ id: eid, ...updateData, userId: window.currentUserId, user: window.currentUserHandle || 'anonymous', mine: true }, true);
       } catch (e) {
         console.error('Firestore update failed:', e);
         showToast('Could not update — check your connection');
@@ -335,6 +343,8 @@ function resetUploadForm() {
   document.getElementById('file-camera').value = '';
   document.getElementById('file-gallery').value = '';
   document.getElementById('loc-map-hint').style.display = 'none';
+  const btn = document.getElementById('submit-btn');
+  if (btn) btn.textContent = 'Pin it to the map →';
 }
 
 // Geocode a textual address/place using Nominatim and set manualPos + preview marker
