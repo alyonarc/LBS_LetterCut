@@ -27,6 +27,7 @@
 #preview-img {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none;
   transform-origin: center center; touch-action: none;
+  user-select: none; -webkit-user-drag: none; cursor: grab;
 }
 
 .upload-zoom-btn {
