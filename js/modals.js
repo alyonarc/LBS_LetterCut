@@ -21,6 +21,18 @@ function openLetterModal(l, isUser) {
   document.getElementById('ml-meta').textContent  = `By @${l.user} · Vienna`;
   document.getElementById('ml-desc').textContent  = l.desc || '';
 
+  // Show report reason banner if this letter has been reported
+  const reportInfoEl = document.getElementById('ml-report-info');
+  if (reportInfoEl) {
+    const activeReport = (window.REPORTS || []).find(r => r.letterId === l.id && !r.resolved);
+    if (activeReport) {
+      reportInfoEl.textContent = `⚠ Reported: ${activeReport.reasonText}`;
+      reportInfoEl.style.display = '';
+    } else {
+      reportInfoEl.style.display = 'none';
+    }
+  }
+
   // Show time of upload if available (format HH:MM, DD.MM.YY)
   const tEl = document.getElementById('ml-time');
   if (tEl) {
@@ -132,26 +144,23 @@ function openLetterModal(l, isUser) {
   }
 
   updateCollectButton(l);
-  // Show delete button for letters that belong to the current user
+  const owned = (l.userId && window.currentUserId && l.userId === window.currentUserId) || l.mine;
+
+  // Delete: show for owners AND moderators (mods can delete any reported letter)
   const delBtn = document.getElementById('ml-delete-btn');
   if (delBtn) {
-    if (l.userId && window.currentUserId && l.userId === window.currentUserId) {
-      delBtn.style.display = '';
-    } else if (l.mine) {
-      delBtn.style.display = '';
-    } else {
-      delBtn.style.display = 'none';
-    }
+    const hasReports = (window.REPORTS || []).some(r => r.letterId === l.id && !r.resolved);
+    delBtn.style.display = (owned || (window.isModerator && hasReports)) ? '' : 'none';
+    delBtn.textContent = (window.isModerator && !owned) ? 'Mod: Delete' : 'Delete';
   }
+  // Edit: owners only
   const editBtn = document.getElementById('ml-edit-btn');
   if (editBtn) {
-    const owned = (l.userId && window.currentUserId && l.userId === window.currentUserId) || l.mine;
     editBtn.style.display = owned ? '' : 'none';
   }
-  // Show report button for letters that do NOT belong to current user
+  // Report: non-owners only
   const repBtn = document.getElementById('ml-report-btn');
   if (repBtn) {
-    const owned = (l.userId && window.currentUserId && l.userId === window.currentUserId) || l.mine;
     repBtn.style.display = owned ? 'none' : '';
   }
 
@@ -230,6 +239,7 @@ async function submitReport(code) {
 
   // Save locally
   window.REPORTS.push(report);
+  if (typeof refreshMarkerStyles === 'function') refreshMarkerStyles();
 
   // Send to Firestore if helper available
   if (window.firestoreAddReport) {
@@ -263,19 +273,44 @@ function getFirstReportForCurrentUser() {
   return window.REPORTS.find(r => r.letterOwnerId === window.currentUserId) || null;
 }
 
-// Open review modal for the first reported letter for this user
-function openReportedReview() {
-  const rep = getFirstReportForCurrentUser();
+// Open review modal for a reported letter; pass letterId to target a specific one
+function openReportedReview(letterId) {
+  const listModal = document.getElementById('reports-list-modal');
+  if (listModal && listModal.classList.contains('open')) closeModal('reports-list-modal');
+
+  let rep;
+  if (letterId) {
+    rep = (window.REPORTS || []).find(r => r.letterOwnerId === window.currentUserId && r.letterId === letterId && !r.resolved);
+  } else {
+    rep = getFirstReportForCurrentUser();
+  }
   if (!rep) return;
-  const letter = allLetters().find(l => l.id === rep.letterId) || null;
+  const letter = (typeof letterDataMap !== 'undefined' && letterDataMap.get(rep.letterId))
+    || allLetters().find(l => l.id === rep.letterId) || null;
   if (!letter) return;
 
-  // set currentLetter context for reuse
   currentLetter = letter;
 
   document.getElementById('rr-title').textContent = `Your letter "${letter.letter}" was reported`;
   document.getElementById('rr-body').textContent  = `Reported reason: ${rep.reasonText}`;
   document.getElementById('reported-review-modal').classList.add('open');
+}
+
+function goToLetterOnMap(letterId) {
+  const listModal = document.getElementById('reports-list-modal');
+  if (listModal && listModal.classList.contains('open')) closeModal('reports-list-modal');
+  goTo('map');
+  const letter = (typeof letterDataMap !== 'undefined' && letterDataMap.get(letterId))
+    || allLetters().find(l => l.id === letterId);
+  if (letter) {
+    setTimeout(() => {
+      if (typeof mapInstance !== 'undefined' && mapInstance) {
+        mapInstance.setView([letter.lat, letter.lng], 17, { animate: true });
+      }
+    }, 400);
+  } else {
+    showToast('Letter not found on map');
+  }
 }
 
 function openReportsList() {
@@ -292,7 +327,8 @@ function openReportsList() {
       div.innerHTML = `
         <div class="ri-info">Letter "${r.letter}" — ${r.reasonText}</div>
         <div class="ri-actions">
-          <button class="mbtn" onclick="(function(){ currentLetter = allLetters().find(l=>l.id===${JSON.stringify(r.letterId)}); openReportedReview(); closeModal('reports-list-modal'); })()">Review</button>
+          <button class="mbtn" onclick="goToLetterOnMap('${r.letterId}')">Show on map</button>
+          <button class="mbtn" onclick="openReportedReview('${r.letterId}')">Review</button>
         </div>`;
       listEl.appendChild(div);
     });
@@ -301,10 +337,9 @@ function openReportsList() {
 }
 
 function reportedDelete() {
-  // Confirm then delete using existing flow
   closeModal('reported-review-modal');
   confirmDeleteCurrent();
-  if (currentLetter && currentLetter.id) resolveReportsForLetter(currentLetter.id);
+  // resolveReportsForLetter is called inside deleteCurrentLetter() after user confirms
 }
 
 function editCurrentLetter() {
@@ -365,20 +400,32 @@ function reportedChangeInfo() {
 }
 
 function reportedDismiss() {
-  // Mark the first matching report as resolved (persistently if possible)
-  const rep = getFirstReportForCurrentUser();
-  if (!rep) return;
+  if (!currentLetter) return;
+  const rep = (window.REPORTS || []).find(
+    r => r.letterId === currentLetter.id && r.letterOwnerId === window.currentUserId && !r.resolved
+  );
+  if (!rep) { closeModal('reported-review-modal'); return; }
+
+  const afterDismiss = () => {
+    if (typeof renderProfile === 'function' &&
+        document.getElementById('screen-profile').classList.contains('active')) {
+      renderProfile();
+    }
+  };
+
   if (rep.id && window.firestoreUpdateReport) {
     window.firestoreUpdateReport(rep.id, { resolved: true }).then(() => {
       showToast('Report dismissed');
+      afterDismiss();
     }).catch(() => {
-      // fallback to local removal
       window.REPORTS = window.REPORTS.filter(r => r.id !== rep.id);
-      showToast('Report dismissed (local)');
+      showToast('Report dismissed');
+      afterDismiss();
     });
   } else {
     window.REPORTS = window.REPORTS.filter(r => r !== rep);
     showToast('Report dismissed');
+    afterDismiss();
   }
   closeModal('reported-review-modal');
 }
@@ -767,6 +814,109 @@ function destroyPostcardMap() {
   }
 }
 
+// ── MODERATOR PANEL ──────────────────────
+function openModPanel() {
+  if (!window.isModerator) return;
+
+  const listEl = document.getElementById('mod-panel-list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+
+  const pending = (window.REPORTS || []).filter(r => !r.resolved);
+
+  if (pending.length === 0) {
+    listEl.innerHTML = '<div class="mod-empty">No pending reports — all clear!</div>';
+  } else {
+    // Group reports by letterId so each letter appears once
+    const byLetter = new Map();
+    pending.forEach(r => {
+      if (!byLetter.has(r.letterId)) byLetter.set(r.letterId, []);
+      byLetter.get(r.letterId).push(r);
+    });
+
+    // reviewPending letters first, then by most recent
+    const sorted = [...byLetter.entries()].sort(([, a], [, b]) => {
+      const aR = a.some(r => r.reviewPending);
+      const bR = b.some(r => r.reviewPending);
+      if (aR && !bR) return -1;
+      if (!aR && bR) return 1;
+      return 0;
+    });
+
+    sorted.forEach(([letterId, reports]) => {
+      const hasReviewPending = reports.some(r => r.reviewPending);
+      const reasons = [...new Set(reports.map(r => r.reasonText))].join(' · ');
+      const letterChar = reports[0].letter || '?';
+      const count = reports.length;
+
+      const div = document.createElement('div');
+      div.className = 'mod-report-item' + (hasReviewPending ? ' review-pending' : '');
+      div.innerHTML = `
+        <div class="mod-ri-top">
+          <div class="mod-ri-badge">${letterChar}</div>
+          <div class="mod-ri-info">
+            ${hasReviewPending ? '<div class="mod-ri-tag">Owner edited — needs review</div>' : ''}
+            <div class="mod-ri-reason">${reasons}</div>
+            <div class="mod-ri-meta">${count} report${count > 1 ? 's' : ''}</div>
+          </div>
+        </div>
+        <div class="mod-ri-actions">
+          <button class="mbtn mod-view-btn" onclick="modViewLetter('${letterId}')">View →</button>
+          <button class="mbtn" onclick="modDismissAll('${letterId}')">Dismiss</button>
+          <button class="mbtn mod-delete-btn" onclick="modDeleteLetter('${letterId}')">Delete</button>
+        </div>`;
+      listEl.appendChild(div);
+    });
+  }
+
+  document.getElementById('mod-panel-modal').classList.add('open');
+}
+
+function modDeleteLetter(letterId) {
+  if (!window.isModerator) return;
+  const letter = (typeof letterDataMap !== 'undefined' && letterDataMap.get(letterId))
+    || (typeof allLetters === 'function' && allLetters().find(l => l.id === letterId))
+    || { id: letterId, letter: '?' };
+
+  currentLetter = { ...letter, id: letterId };
+  closeModal('mod-panel-modal');
+  confirmDeleteCurrent();
+}
+
+function modViewLetter(letterId) {
+  if (!window.isModerator) return;
+  const letter = (typeof letterDataMap !== 'undefined' && letterDataMap.get(letterId))
+    || (typeof allLetters === 'function' && allLetters().find(l => l.id === letterId));
+
+  if (!letter) { showToast('Letter not found on map'); return; }
+
+  closeModal('mod-panel-modal');
+  goTo('map');
+  setTimeout(() => {
+    if (typeof mapInstance !== 'undefined' && mapInstance && letter.lat && letter.lng) {
+      mapInstance.setView([letter.lat, letter.lng], 17, { animate: true });
+    }
+    openLetterModal(letter, false);
+  }, 350);
+}
+
+async function modDismissAll(letterId) {
+  if (!window.isModerator) return;
+  const reps = (window.REPORTS || []).filter(r => r.letterId === letterId && !r.resolved);
+  try {
+    await Promise.all(reps.map(r => {
+      if (r.id && window.firestoreUpdateReport) {
+        return window.firestoreUpdateReport(r.id, { resolved: true, moderatorDismissed: true });
+      }
+      return Promise.resolve();
+    }));
+    showToast('Reports dismissed');
+    openModPanel();
+  } catch (e) {
+    showToast('Could not dismiss reports');
+  }
+}
+
 // ── HELPERS ───────────────────────────────
 function closeModal(id) {
   document.getElementById(id).classList.remove('open');
@@ -788,3 +938,4 @@ function handleFinishConfirmed() {
   // Trigger your original finish logic
   showPostcard();
 }
+

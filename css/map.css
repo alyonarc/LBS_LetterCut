@@ -13,6 +13,7 @@
 
 /* ── LETTER PIN ── */
 .lc-pin {
+  position: relative;
   width: 36px; height: 36px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700;
@@ -20,6 +21,15 @@
   border: 2.5px solid rgba(255,255,255,.6);
   box-shadow: 0 3px 10px rgba(0,0,0,.25);
   transition: transform .15s, box-shadow .15s;
+}
+/* Report badge on letter pin */
+.lc-pin-report-badge {
+  position: absolute; top: -7px; right: -7px;
+  width: 17px; height: 17px;
+  background: #e07b00; border: 2px solid white; border-radius: 50%;
+  font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 700;
+  color: white; display: flex; align-items: center; justify-content: center;
+  pointer-events: none; z-index: 1; line-height: 1;
 }
 .lc-pin.mine  { background: var(--red); border-color: white; }
 .lc-pin.other { background: var(--ink); }
