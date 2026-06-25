@@ -60,6 +60,70 @@
       font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: .8px;
       color: var(--muted); margin-top: 40px; text-transform: uppercase;
     }
+    /* ── POSTCARD MAP BACKGROUND ── */
+    .postcard-map-wrap {
+      position: relative;
+      width: 100%;
+      height: 200px;
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.18);
+    }
+    #postcard-map {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      filter: saturate(0.7) brightness(0.95);
+    }
+    /* Dark gradient so text is always readable */
+    .postcard-map-wrap::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(18,12,8,0.06) 0%,
+        rgba(18,12,8,0.55) 100%
+      );
+      z-index: 1;
+      pointer-events: none;
+      border-radius: 14px;
+    }
+    .postcard-overlay {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      padding: 14px 18px 16px;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .postcard-map-wrap .postcard-eyebrow {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 2px;
+    }
+    .postcard-map-wrap .postcard-word {
+      font-family: 'Playfair Display', serif;
+      font-weight: 900;
+      font-size: 38px;
+      line-height: 1;
+      color: #fff;
+      letter-spacing: -1px;
+      text-shadow: 0 2px 12px rgba(0,0,0,.5);
+    }
+    .postcard-map-wrap .postcard-date {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: rgba(255,255,255,0.6);
+      margin-top: 4px;
+    }
+    .postcard-map-wrap .leaflet-control-attribution,
+    .postcard-map-wrap .leaflet-control-zoom { display: none; }
   </style>
 </head>
 <body>
@@ -280,10 +344,13 @@
   <div class="modal-overlay" id="postcard-modal" onclick="closeModal('postcard-modal')">
     <div class="modal-sheet" onclick="event.stopPropagation()" style="padding-bottom:28px">
       <div class="modal-handle"></div>
-      <div class="postcard-box">
-        <div class="postcard-eyebrow">Walk complete</div>
-        <div class="postcard-word" id="pc-word">WIEN</div>
-        <div class="postcard-date" id="pc-date">Vienna · today</div>
+      <div class="postcard-map-wrap">
+        <div id="postcard-map"></div>
+        <div class="postcard-overlay">
+          <div class="postcard-eyebrow">Walk complete</div>
+          <div class="postcard-word" id="pc-word">WIEN</div>
+          <div class="postcard-date" id="pc-date">Vienna · today</div>
+        </div>
       </div>
       <div class="pc-stats">
         <div class="pc-stat"><div class="pc-n" id="pc-letters">4</div><div class="pc-l">Letters</div></div>

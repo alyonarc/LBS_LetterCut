@@ -6,6 +6,7 @@
 
 let currentLetter = null;
 let postcardWalkPath = [];
+let postcardMapInstance = null;
 
 // Reports cache (session)
 // REPORTS is provided by mockdata.js; ensure it's available
@@ -474,6 +475,9 @@ async function showPostcard() {
   // Save path for postcard image before clearing
   postcardWalkPath = [...walkPath];
 
+  // Render the live mini-map background in the modal
+  setTimeout(() => renderPostcardMap(postcardWalkPath), 80);
+
   // Clean up walk state
   walkLetters = []; walkPath = [];
   if (walkPolyline) { mapInstance.removeLayer(walkPolyline); walkPolyline = null; }
@@ -712,8 +716,60 @@ async function checkWord(word, el) {
   }
 }
 
+// ── POSTCARD MINI-MAP ────────────────────
+function renderPostcardMap(routeCoords) {
+  // Destroy any existing instance first
+  destroyPostcardMap();
+
+  const container = document.getElementById('postcard-map');
+  if (!container) return;
+
+  const VIENNA = [48.2082, 16.3738];
+  const centre = routeCoords.length
+    ? routeCoords[Math.floor(routeCoords.length / 2)]
+    : VIENNA;
+
+  postcardMapInstance = L.map('postcard-map', {
+    center: centre,
+    zoom: 15,
+    zoomControl:      false,
+    attributionControl: false,
+    dragging:         false,
+    scrollWheelZoom:  false,
+    doubleClickZoom:  false,
+    touchZoom:        false,
+    keyboard:         false,
+    boxZoom:          false,
+  });
+
+  // Same tiles as the main map
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    subdomains: 'abcd', maxZoom: 19,
+  }).addTo(postcardMapInstance);
+
+  if (routeCoords.length > 1) {
+    const line = L.polyline(routeCoords, {
+      color: '#bf2c1e',
+      weight: 4,
+      opacity: 0.9,
+      lineJoin: 'round',
+      lineCap:  'round',
+    }).addTo(postcardMapInstance);
+
+    postcardMapInstance.fitBounds(line.getBounds(), { padding: [32, 32] });
+  }
+}
+
+function destroyPostcardMap() {
+  if (postcardMapInstance) {
+    postcardMapInstance.remove();
+    postcardMapInstance = null;
+  }
+}
+
 // ── HELPERS ───────────────────────────────
 function closeModal(id) {
   document.getElementById(id).classList.remove('open');
+  if (id === 'postcard-modal') destroyPostcardMap();
 }
 
