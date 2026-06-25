@@ -301,6 +301,17 @@ async function submitLetter() {
   }
 
   showToast(`"${selLetter}" pinned to the map! ✓`);
+  
+    if (window.currentUserId && window.firestoreUpdateStats) {
+      const ptsForLetter = window.getLetterScore(selLetter); 
+      
+      window.firestoreUpdateStats(
+          window.currentUserId,
+          window.currentUserHandle || 'Player',
+          ptsForLetter,
+          null
+      ).catch(e => console.error('Calculation error:', e));
+  }
 
   // If the user was editing in response to a report, and the reason was A or D,
   // inform them that changes are saved and will be reviewed by a moderator.

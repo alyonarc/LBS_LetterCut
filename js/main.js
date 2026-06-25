@@ -22,6 +22,10 @@ function goTo(id) {
     if (typeof renderProfile === 'function') renderProfile();
   }
 
+  if (id === 'leaderboard' && typeof renderLB === 'function') {
+    renderLB('weekly');
+  }
+
   if (id === 'upload') {
     // If returning from map-location picker, apply the queued location text
     if (window._pendingLocText) {

@@ -1,5 +1,5 @@
 import { signInWithGoogle, signOutUser, onAuthChanged } from '../data/firebase/auth.js';
-import { subscribeToLetters, addLetter, deleteLetter, addReport, subscribeToReports, checkIfModerator } from '../data/firebase/letters.js';
+import { subscribeToLetters, addLetter, deleteLetter, addReport, subscribeToReports, checkIfModerator, updateUserStats, fetchLeaderboard, fetchUserStats, fetchUserLetterCount } from '../data/firebase/letters.js';
 import { updateReport } from '../data/firebase/letters.js';
 
 // Start splash minimum-display timer immediately (runs in parallel with script loading)
@@ -30,6 +30,10 @@ await loadScript('js/main.js');
 window.firestoreAddLetter    = addLetter;
 window.firestoreDeleteLetter = deleteLetter;
 window.firestoreAddReport    = addReport;
+window.firestoreGetLeaderboard = fetchLeaderboard;
+window.firestoreUpdateStats = updateUserStats;
+window.firestoreGetUserStats = fetchUserStats;
+window.firestoreGetUserLetterCount = fetchUserLetterCount;
 window.firestoreUpdateLetter = async (id, data) => {
   if (typeof updateLetter === 'function') return updateLetter(id, data);
   // Lazy import fallback

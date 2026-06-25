@@ -9,14 +9,32 @@ function renderProfile() {
   document.getElementById('profile-handle').textContent    = `${CURRENT_USER.handle} · ${CURRENT_USER.city}`;
   document.getElementById('profile-rank-badge').textContent = `★ Rank #${CURRENT_USER.rank} this week`;
 
-  document.getElementById('stat-pts').textContent     = CURRENT_USER.pts;
-  // Revert to static CURRENT_USER value for letters (dynamic counting disabled)
-  document.getElementById('stat-letters').textContent = CURRENT_USER.letters;
-  document.getElementById('stat-walks').textContent   = CURRENT_USER.walks;
+  document.getElementById('stat-pts').textContent = "0";
+  document.getElementById('stat-letters').textContent = "0";
+  document.getElementById('stat-walks').textContent = "0";
 
-  // Words collected
-  document.getElementById('words-wrap').innerHTML =
-    CURRENT_USER.words.map(w => `<div class="word-chip">${w}</div>`).join('');
+  if (window.currentUserId && window.firestoreGetUserStats) {
+    window.firestoreGetUserStats(window.currentUserId).then(myData => {
+      if (myData) {
+        document.getElementById('stat-pts').textContent = myData.pts || 0;
+        
+        const words = myData.words || [];
+        if (words.length > 0) {
+          const cleanWords = words.filter(w => !w.startsWith('UPLOAD_'));
+          document.getElementById('words-wrap').innerHTML = cleanWords.map(w => `<div class="word-chip">${w}</div>`).join('');
+          document.getElementById('stat-walks').textContent = cleanWords.length;
+        } else {
+          document.getElementById('words-wrap').innerHTML = '<div style="color:var(--muted);font-size:13px;">No collected words yet</div>';
+        }
+      }
+    }).catch(e => console.error("Profile loading error:", e));
+  }
+
+  if (window.currentUserId && window.firestoreGetUserLetterCount) {
+    window.firestoreGetUserLetterCount(window.currentUserId).then(count => {
+        document.getElementById('stat-letters').textContent = count;
+    }).catch(e => console.error("Letter count error:", e));
+  }
 
   // Journey history
   document.getElementById('journey-list').innerHTML =
