@@ -735,6 +735,22 @@ async function sharePostcard() {
   }, 'image/png');
 }
 
+window.SCRABBLE_SCORES = {
+  'A': 1, 'B': 3, 'C': 3, 'D': 2, 'E': 1, 'F': 4, 'G': 2, 'H': 4, 'I': 1,
+  'J': 8, 'K': 5, 'L': 1, 'M': 3, 'N': 1, 'O': 1, 'P': 3, 'Q': 10, 'R': 1,
+  'S': 1, 'T': 1, 'U': 1, 'V': 4, 'W': 4, 'X': 8, 'Y': 4, 'Z': 10
+};
+
+window.getLetterScore = function(char) {
+  return window.SCRABBLE_SCORES[char.toUpperCase()] || 0;
+};
+
+function getWordScore(word) {
+  return word.split('').reduce((total, char) => {
+    return total + window.getLetterScore(char);
+  }, 0);
+}
+
 async function checkWord(word, el) {
   try {
     const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word.toLowerCase()}`);
@@ -750,6 +766,23 @@ async function checkWord(word, el) {
           <div class="wc-text"><strong>${word}</strong> is a real word! +bonus pts</div>
           ${def ? `<div class="wc-def">${def}</div>` : ''}
         </div>`;
+        
+        if (window.currentUserId && window.firestoreUpdateStats) {
+        const basePoints = getWordScore(word);
+        const lengthBonus = word.length > 5 ? 10 : 0; 
+        const ptsEarned = basePoints + lengthBonus;
+        const realName = (typeof CURRENT_USER !== 'undefined' && CURRENT_USER.name) 
+                         ? CURRENT_USER.name 
+                         : 'Anonymous';
+
+        window.firestoreUpdateStats(
+          window.currentUserId, 
+          realName, 
+          ptsEarned, 
+          word.toUpperCase()
+        ).catch(e => console.error('Error saving score:', e));
+      }
+        
     } else {
       el.className = 'word-check invalid';
       el.innerHTML = `
