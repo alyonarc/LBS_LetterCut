@@ -15,7 +15,7 @@ async function renderLB(key) {
   lbList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--muted);">Downloading rating...</div>';
 
   if (!window.firestoreGetLeaderboard) {
-    console.error("❌ Funktion firestoreGetLeaderboard/ is not found");/ н/
+    console.error("❌ Funсtion firestoreGetLeaderboard is not found");/ н/
     return;
   }
 
