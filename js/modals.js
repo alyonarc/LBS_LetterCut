@@ -773,3 +773,18 @@ function closeModal(id) {
   if (id === 'postcard-modal') destroyPostcardMap();
 }
 
+// ── FINISH WALK CONFIRMATION FLOW ─────────────────────────
+function confirmFinishWalk() {
+  // Check if there is progress to prevent empty postcards
+  if (typeof walkLetters !== 'undefined' && walkLetters.length === 0) {
+    showToast("No letters collected yet!");
+    return;
+  }
+  document.getElementById('finish-confirm-modal').classList.add('open');
+}
+
+function handleFinishConfirmed() {
+  closeModal('finish-confirm-modal');
+  // Trigger your original finish logic
+  showPostcard();
+}
