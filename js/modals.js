@@ -501,7 +501,9 @@ async function showPostcard() {
   document.getElementById('pc-date').textContent =
     `Vienna · ${new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}`;
   document.getElementById('pc-letters').textContent = walkLetters.length;
-  document.getElementById('pc-pts').textContent = '+' + (walkLetters.length * 10);
+  const basePts = getWordScore(word);
+  const bonusPts = word.length > 5 ? 10 : 0;
+  document.getElementById('pc-pts').textContent = '+' + (basePts + bonusPts);
 
   // Calculate walk distance from GPS path
   let dist = '—';
