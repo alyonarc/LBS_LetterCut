@@ -265,12 +265,12 @@ async function submitReport(code) {
 // ── REVIEW FLOW FOR OWNERS ──────────────
 function hasReportsForCurrentUser() {
   if (!window.currentUserId) return false;
-  return window.REPORTS.some(r => r.letterOwnerId === window.currentUserId);
+  return window.REPORTS.some(r => r.letterOwnerId === window.currentUserId && !r.resolved && !r.ownerDismissed);
 }
 
 function getFirstReportForCurrentUser() {
   if (!window.currentUserId) return null;
-  return window.REPORTS.find(r => r.letterOwnerId === window.currentUserId) || null;
+  return window.REPORTS.find(r => r.letterOwnerId === window.currentUserId && !r.resolved && !r.ownerDismissed) || null;
 }
 
 // Open review modal for a reported letter; pass letterId to target a specific one
@@ -280,7 +280,7 @@ function openReportedReview(letterId) {
 
   let rep;
   if (letterId) {
-    rep = (window.REPORTS || []).find(r => r.letterOwnerId === window.currentUserId && r.letterId === letterId && !r.resolved);
+    rep = (window.REPORTS || []).find(r => r.letterOwnerId === window.currentUserId && r.letterId === letterId && !r.resolved && !r.ownerDismissed);
   } else {
     rep = getFirstReportForCurrentUser();
   }
@@ -317,7 +317,7 @@ function openReportsList() {
   const listEl = document.getElementById('reports-list');
   if (!listEl) return;
   listEl.innerHTML = '';
-  const reps = (window.REPORTS || []).filter(r => r.letterOwnerId === window.currentUserId && !r.resolved);
+  const reps = (window.REPORTS || []).filter(r => r.letterOwnerId === window.currentUserId && !r.resolved && !r.ownerDismissed);
   if (reps.length === 0) {
     listEl.innerHTML = '<div style="color:var(--muted)">No reports</div>';
   } else {
@@ -414,16 +414,18 @@ function reportedDismiss() {
   };
 
   if (rep.id && window.firestoreUpdateReport) {
-    window.firestoreUpdateReport(rep.id, { resolved: true }).then(() => {
+    window.firestoreUpdateReport(rep.id, { ownerDismissed: true }).then(() => {
       showToast('Report dismissed');
       afterDismiss();
     }).catch(() => {
-      window.REPORTS = window.REPORTS.filter(r => r.id !== rep.id);
+      const idx = window.REPORTS.findIndex(r => r.id === rep.id);
+      if (idx !== -1) window.REPORTS[idx] = { ...window.REPORTS[idx], ownerDismissed: true };
       showToast('Report dismissed');
       afterDismiss();
     });
   } else {
-    window.REPORTS = window.REPORTS.filter(r => r !== rep);
+    const idx = window.REPORTS.indexOf(rep);
+    if (idx !== -1) window.REPORTS[idx] = { ...rep, ownerDismissed: true };
     showToast('Report dismissed');
     afterDismiss();
   }
@@ -845,17 +847,19 @@ function openModPanel() {
 
     sorted.forEach(([letterId, reports]) => {
       const hasReviewPending = reports.some(r => r.reviewPending);
+      const hasOwnerDismissed = reports.some(r => r.ownerDismissed);
       const reasons = [...new Set(reports.map(r => r.reasonText))].join(' · ');
       const letterChar = reports[0].letter || '?';
       const count = reports.length;
 
       const div = document.createElement('div');
-      div.className = 'mod-report-item' + (hasReviewPending ? ' review-pending' : '');
+      div.className = 'mod-report-item' + (hasReviewPending ? ' review-pending' : '') + (hasOwnerDismissed && !hasReviewPending ? ' owner-dismissed' : '');
       div.innerHTML = `
         <div class="mod-ri-top">
           <div class="mod-ri-badge">${letterChar}</div>
           <div class="mod-ri-info">
             ${hasReviewPending ? '<div class="mod-ri-tag">Owner edited — needs review</div>' : ''}
+            ${hasOwnerDismissed && !hasReviewPending ? '<div class="mod-ri-tag mod-ri-tag--dismissed">User dismissed report</div>' : ''}
             <div class="mod-ri-reason">${reasons}</div>
             <div class="mod-ri-meta">${count} report${count > 1 ? 's' : ''}</div>
           </div>
