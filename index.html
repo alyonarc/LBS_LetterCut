@@ -177,7 +177,7 @@
     <div id="walk-bar">
       <div class="wlbl">Word so far</div>
       <div id="walk-chips"><span class="wempty">tap nearby pins to collect…</span></div>
-      <div id="walk-actions">
+       <div id="walk-actions">
         <button onclick="undoLastLetter()">↩ Undo</button>
         <button onclick="confirmFinishWalk()">Finish word →</button>
       </div>
@@ -280,10 +280,13 @@
       <div class="stat-cell"><div class="stat-n" id="stat-walks">9</div><div class="stat-l">Walks</div></div>
     </div>
     <div class="sec-head">Words collected</div>
-    <div id="profile-reports-row" class="profile-reports" style="display:none;cursor:pointer" onclick="openReportsList()">Reports</div>
     <div class="words-wrap" id="words-wrap"></div>
     <div class="sec-head">Recent journeys</div>
     <div class="journey-list" id="journey-list"></div>
+     <div id="profile-reports-section">
+      <div class="sec-head">Reported letters</div>
+      <div class="reported-letters-list" id="reported-letters-list"></div>
+    </div>
     <div class="sec-head">Settings</div>
     <div class="settings-list">
       <div class="setting-row"><span class="s-icon">📍</span><span class="s-lbl">Share location</span><div class="toggle on" onclick="toggleLocation(this)"></div></div>
@@ -328,6 +331,7 @@
  <button id="ml-delete-btn" class="ml-delete-btn" onclick="confirmDeleteCurrent()" style="display:none">Delete</button>
   <button id="ml-report-btn" class="ml-report-btn" onclick="openReportModal()" style="display:none">Report</button>
       </div>
+      <div class="ml-report-info" id="ml-report-info" style="display:none"></div>
       <div class="ml-photo" id="ml-photo"></div>
       <div class="proximity-warning" id="prox-warn">
         📍 You're too far away<br>
@@ -416,25 +420,38 @@
   <div class="modal-overlay" id="reported-review-modal" onclick="closeModal('reported-review-modal')">
     <div class="modal-sheet" onclick="event.stopPropagation()" style="max-width:480px;margin:0 auto;">
       <div class="modal-handle"></div>
+      <div style="margin-bottom:12px;font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)">Review report</div>
       <div id="rr-title" style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin-bottom:10px"></div>
       <div id="rr-body" style="font-family:'DM Sans',sans-serif;color:var(--muted);margin-bottom:18px"></div>
-      <div style="display:flex;gap:8px;margin-bottom:12px">
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
         <button class="mbtn" onclick="reportedDelete()">Delete the letter</button>
-        <button class="mbtn" onclick="reportedChangeInfo()">Change information</button>
-        <button class="mbtn" onclick="reportedDismiss()">The report is incorrect</button>
+        <button class="mbtn" onclick="reportedDismiss()">The report was incorrect</button>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="mbtn" onclick="closeModal('reported-review-modal')">Cancel</button>
       </div>
     </div>
+  </div>
 
-      <!-- ══ REPORTS LIST MODAL (owner view) ══ -->
-      <div class="modal-overlay" id="reports-list-modal" onclick="closeModal('reports-list-modal')">
-        <div class="modal-sheet" onclick="event.stopPropagation()" style="max-width:480px;margin:0 auto;">
-          <div class="modal-handle"></div>
-          <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin-bottom:10px">Reports</div>
-          <div id="reports-list" style="display:flex;flex-direction:column;gap:10px"></div>
-          <div style="margin-top:12px"><button class="mbtn" onclick="closeModal('reports-list-modal')">Close</button></div>
-        </div>
-      </div>
+  <!-- ══ REPORTS LIST MODAL (owner view) ══ -->
+  <div class="modal-overlay" id="reports-list-modal" onclick="closeModal('reports-list-modal')">
+    <div class="modal-sheet" onclick="event.stopPropagation()" style="max-width:480px;margin:0 auto;">
+      <div class="modal-handle"></div>
+      <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin-bottom:10px">Reports</div>
+      <div id="reports-list" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div style="margin-top:12px"><button class="mbtn" onclick="closeModal('reports-list-modal')">Close</button></div>
+    </div>
+  </div>
 
+  <!-- ══ MODERATOR PANEL MODAL ══ -->
+  <div class="modal-overlay" id="mod-panel-modal" onclick="closeModal('mod-panel-modal')">
+    <div class="modal-sheet" onclick="event.stopPropagation()" style="max-width:480px;margin:0 auto;">
+      <div class="modal-handle"></div>
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:#1a5c8a;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">🛡 Moderator</div>
+      <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin-bottom:16px">Reported Letters</div>
+      <div id="mod-panel-list" style="display:flex;flex-direction:column;gap:10px;max-height:60dvh;overflow-y:auto;"></div>
+      <div style="margin-top:14px"><button class="mbtn" onclick="closeModal('mod-panel-modal')">Close</button></div>
+    </div>
   </div>
 
 </div><!-- /app -->

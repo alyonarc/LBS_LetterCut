@@ -1,5 +1,5 @@
 import { signInWithGoogle, signOutUser, onAuthChanged } from '../data/firebase/auth.js';
-import { subscribeToLetters, addLetter, deleteLetter, addReport, subscribeToReports } from '../data/firebase/letters.js';
+import { subscribeToLetters, addLetter, deleteLetter, addReport, subscribeToReports, checkIfModerator } from '../data/firebase/letters.js';
 import { updateReport } from '../data/firebase/letters.js';
 
 // Start splash minimum-display timer immediately (runs in parallel with script loading)
@@ -99,6 +99,21 @@ onAuthChanged(async user => {
 
     applyUserToProfile(user);
 
+    // Check moderator status asynchronously
+    window.isModerator = false;
+    checkIfModerator(user.uid).then(isMod => {
+      window.isModerator = isMod;
+      if (isMod && !document.getElementById('mod-panel-btn')) {
+        document.querySelector('.settings-list').insertAdjacentHTML('afterbegin',
+          `<div id="mod-panel-btn" class="setting-row" onclick="openModPanel()">
+             <span class="s-icon">🛡</span>
+             <span class="s-lbl" style="color:#1a5c8a">Moderator Panel</span>
+             <span class="s-arr" id="mod-report-count">›</span>
+           </div>`
+        );
+      }
+    }).catch(() => { window.isModerator = false; });
+
     if (!appBooted) {
       appBooted = true;
       bootApp(user);
@@ -114,17 +129,31 @@ onAuthChanged(async user => {
       window.REPORTS = reports;
       window._lastReportIds = ids;
 
+      // Update mod panel count badge if visible
+      if (window.isModerator) {
+        const countEl = document.getElementById('mod-report-count');
+        if (countEl) {
+          const pending = reports.filter(r => !r.resolved).length;
+          countEl.textContent = pending > 0 ? String(pending) : '›';
+        }
+      }
+
       // Report notifications disabled — owners will not receive OS notifications from this client.
 
       // If profile screen visible, re-render so warning appears
       if (document.getElementById('screen-profile').classList.contains('active')) {
         if (typeof renderProfile === 'function') renderProfile();
       }
+      // Refresh map markers to show/hide report badges
+      if (typeof refreshMarkerStyles === 'function') refreshMarkerStyles();
     });
   } else {
     document.getElementById('login-screen').style.display = 'flex';
     window.currentUserId     = null;
     window.currentUserHandle = null;
+    window.isModerator       = false;
+    const modBtn = document.getElementById('mod-panel-btn');
+    if (modBtn) modBtn.remove();
     if (unsubLetters) { unsubLetters(); unsubLetters = null; }
     appBooted = false;
   }

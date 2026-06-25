@@ -18,6 +18,10 @@ function goTo(id) {
     setTimeout(() => mapInstance.invalidateSize(), 60);
   }
 
+  if (id === 'profile') {
+    if (typeof renderProfile === 'function') renderProfile();
+  }
+
   if (id === 'upload') {
     // If returning from map-location picker, apply the queued location text
     if (window._pendingLocText) {

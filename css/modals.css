@@ -86,6 +86,13 @@
 .report-item .ri-info { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--muted); }
 .report-item .ri-actions { display:flex; gap:8px; }
 
+/* Report info banner shown inside letter modal for reported letters */
+.ml-report-info {
+  background: rgba(224,123,0,.08); border: 1.5px solid rgba(224,123,0,.3);
+  color: #a05500; padding: 10px 14px; border-radius: 10px; margin-bottom: 14px;
+  font-family: 'DM Mono', monospace; font-size: 12px; line-height: 1.4;
+}
+
 .ml-photo {
   width: 100%; height: 240px; border-radius: var(--radius);
   overflow: hidden; margin-bottom: 18px;
@@ -161,3 +168,32 @@
 .wc-icon { font-size: 18px; flex-shrink: 0; }
 .wc-text { flex: 1; line-height: 1.5; }
 .wc-def  { font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--muted); margin-top: 3px; font-style: italic; }
+
+/* ── MODERATOR PANEL ── */
+.mod-report-item {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 12px; border: 1.5px solid var(--cream2); border-radius: 10px;
+}
+.mod-report-item.review-pending {
+  border-color: rgba(191,44,30,.35); background: rgba(191,44,30,.04);
+}
+.mod-ri-top { display: flex; align-items: flex-start; gap: 10px; }
+.mod-ri-badge {
+  width: 40px; height: 40px; border-radius: 50%; background: var(--ink); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: var(--paper);
+}
+.mod-ri-info { flex: 1; min-width: 0; }
+.mod-ri-tag {
+  font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: .5px;
+  text-transform: uppercase; color: var(--red); margin-bottom: 3px;
+}
+.mod-ri-reason { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--ink); line-height: 1.4; }
+.mod-ri-meta   { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 3px; }
+.mod-ri-actions { display: flex; gap: 6px; }
+.mod-view-btn   { flex: 1; }
+.mod-delete-btn { color: var(--red) !important; }
+.mod-empty {
+  font-family: 'DM Mono', monospace; font-size: 13px; color: var(--muted);
+  padding: 28px 0; text-align: center;
+}

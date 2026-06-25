@@ -77,6 +77,55 @@
 .journey-meta { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); margin-top: 4px; }
 .journey-pts  { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: var(--red); }
 
+/* ── REPORTED LETTERS ── */
+.reported-letters-list {
+  padding: 0 22px 14px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.reported-letter-card {
+  background: rgba(224,123,0,.05); border: 1.5px solid rgba(224,123,0,.28);
+  border-radius: var(--radius); padding: 14px 16px;
+  display: flex; gap: 14px; align-items: center;
+}
+.reported-letter-badge {
+  width: 48px; height: 48px; border-radius: 50%; background: var(--ink); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700;
+  color: var(--paper); position: relative;
+}
+.reported-letter-badge .report-dot {
+  position: absolute; top: -4px; right: -4px;
+  width: 16px; height: 16px; background: #e07b00;
+  border: 2px solid white; border-radius: 50%;
+  font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 700;
+  color: white; display: flex; align-items: center; justify-content: center; line-height: 1;
+}
+.reported-letter-info { flex: 1; min-width: 0; }
+.reported-letter-char  { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; line-height: 1; }
+.reported-letter-reason {
+  font-family: 'DM Mono', monospace; font-size: 11px; color: #a05500;
+  margin-top: 5px; line-height: 1.4;
+}
+.reported-letter-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.reported-letter-actions button {
+  padding: 7px 12px; border: 1px solid var(--cream2); background: var(--paper);
+  border-radius: 8px; font-family: 'DM Mono', monospace; font-size: 11px;
+  cursor: pointer; color: var(--ink); white-space: nowrap; text-align: center;
+  transition: background .12s;
+}
+.reported-letter-actions button:hover { background: var(--cream); }
+.reported-letter-actions button.pri {
+  background: var(--ink); color: var(--paper); border-color: transparent;
+}
+.reported-letter-actions button.pri:hover { background: #2a2018; }
+
+/* ── REPORTED LETTERS EMPTY STATE ── */
+.no-reports {
+  padding: 14px 0;
+  font-family: 'DM Mono', monospace; font-size: 12px;
+  color: var(--muted); text-align: center;
+}
+
 /* ── SETTINGS ── */
 .settings-list { padding: 0 22px 36px; display: flex; flex-direction: column; gap: 2px; }
 .setting-row {

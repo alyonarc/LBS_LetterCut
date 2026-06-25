@@ -7,7 +7,19 @@
 let mapInstance, userPos = null, userMarker = null;
 let walkLetters = [], walkPath = [], walkPolyline = null;
 let mapMode = 'explore';
-const markerMap = new Map(); // letter id → Leaflet marker
+const markerMap = new Map();    // letter id → Leaflet marker
+const letterDataMap = new Map(); // letter id → full letter object (all sources incl. Firestore)
+
+function isLetterReported(letterId) {
+  // Only show the report badge to the letter's owner
+  const letter = letterDataMap.get(letterId);
+  const isOwner = letter && (
+    (letter.userId && window.currentUserId && letter.userId === window.currentUserId) ||
+    letter.mine === true
+  );
+  if (!isOwner) return false;
+  return (window.REPORTS || []).some(r => r.letterId === letterId && !r.resolved);
+}
 let gpsWatchId = null;
 let locationEnabled = true;
 
@@ -33,17 +45,24 @@ function initMap() {
 }
 
 // ── MARKERS ───────────────────────────────
-function makeIcon(letter, isMine, isNearby) {
+function makeIcon(letter, isMine, isNearby, isReported) {
   const el = document.createElement('div');
   el.className = 'lc-pin' + (isMine ? ' mine' : ' other') + (isNearby ? ' nearby' : '');
   el.textContent = letter;
+  if (isReported) {
+    const badge = document.createElement('span');
+    badge.className = 'lc-pin-report-badge';
+    badge.textContent = '!';
+    el.appendChild(badge);
+  }
   return L.divIcon({ html: el, className: '', iconSize: [36, 36], iconAnchor: [18, 18] });
 }
 
 function addMarker(l, isUser) {
+  letterDataMap.set(l.id, l); // track all letters for lookup by any script
   const nearby = isNearby(l);
   const marker = L.marker([l.lat, l.lng], {
-    icon: makeIcon(l.letter, l.mine || isUser, nearby),
+    icon: makeIcon(l.letter, l.mine || isUser, nearby, isLetterReported(l.id)),
   }).addTo(mapInstance);
   marker.on('click', () => openLetterModal(l, isUser));
   markerMap.set(l.id, marker);
@@ -51,11 +70,12 @@ function addMarker(l, isUser) {
 }
 
 function refreshMarkerStyles() {
-  allLetters().forEach(l => {
-    const m = markerMap.get(l.id);
-    if (!m) return;
-    const isUser = userLetters.includes(l);
-    m.setIcon(makeIcon(l.letter, l.mine || isUser, isNearby(l)));
+  // Iterate ALL map markers (not just allLetters()) so Firestore letters are updated too
+  markerMap.forEach((marker, id) => {
+    const l = letterDataMap.get(id);
+    if (!l) return;
+    const isUser = userLetters.some(u => u.id === id);
+    marker.setIcon(makeIcon(l.letter, l.mine || isUser, isNearby(l), isLetterReported(id)));
   });
 }
 

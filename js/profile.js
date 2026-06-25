@@ -30,28 +30,33 @@ function renderProfile() {
         <div class="journey-pts">+${j.pts}</div>
       </div>`).join('');
 
-  // Show reported-letter warning if there are reports for this user's letters
-  const container = document.getElementById('profile-av-letter').parentElement.parentElement;
-  const existingWarn = document.getElementById('profile-report-warning');
-  if (typeof hasReportsForCurrentUser === 'function' && hasReportsForCurrentUser()) {
-    if (!existingWarn) {
-      const warn = document.createElement('div');
-      warn.id = 'profile-report-warning';
-      warn.className = 'profile-warning';
-      warn.textContent = 'Review the reported letter';
-      warn.onclick = () => { if (typeof openReportedReview === 'function') openReportedReview(); };
-      container.insertBefore(warn, container.firstChild);
+  // Render reported letters section (inline cards, owner view)
+  const reportsSection = document.getElementById('profile-reports-section');
+  const reportsListEl  = document.getElementById('reported-letters-list');
+  const myReports = (window.REPORTS || []).filter(
+    r => r.letterOwnerId === window.currentUserId && !r.resolved
+  );
+  if (reportsSection && reportsListEl) {
+    reportsSection.style.display = '';
+    if (myReports.length > 0) {
+      reportsListEl.innerHTML = myReports.map(r => `
+        <div class="reported-letter-card">
+          <div class="reported-letter-badge">
+            ${r.letter}
+            <span class="report-dot">!</span>
+          </div>
+          <div class="reported-letter-info">
+            <div class="reported-letter-char">Letter "${r.letter}"</div>
+            <div class="reported-letter-reason">${r.reasonText}</div>
+          </div>
+          <div class="reported-letter-actions">
+            <button class="pri" onclick="goToLetterOnMap('${r.letterId}')">See on map</button>
+            <button onclick="openReportedReview('${r.letterId}')">Review</button>
+          </div>
+        </div>`).join('');
+    } else {
+      reportsListEl.innerHTML = '<div class="no-reports">No reported letters</div>';
     }
-  } else if (existingWarn) {
-    existingWarn.remove();
-  }
-
-  // Show Reports row (owner view) if they have any reports
-  const reportsRow = document.getElementById('profile-reports-row');
-  if (typeof window.REPORTS !== 'undefined' && window.REPORTS.some(r => r.letterOwnerId === window.currentUserId && !r.resolved)) {
-    if (reportsRow) reportsRow.style.display = '';
-  } else if (reportsRow) {
-    reportsRow.style.display = 'none';
   }
 }
 

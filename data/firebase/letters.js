@@ -52,3 +52,10 @@ export async function updateLetter(id, data) {
   const d = doc(db, 'letters', id);
   return updateDoc(d, data);
 }
+
+export async function checkIfModerator(uid) {
+  const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+  const d = doc(db, 'moderators', uid);
+  const snap = await getDoc(d);
+  return snap.exists();
+}
