@@ -18,7 +18,7 @@ function isLetterReported(letterId) {
     letter.mine === true
   );
   if (!isOwner) return false;
-  return (window.REPORTS || []).some(r => r.letterId === letterId && !r.resolved);
+  return (window.REPORTS || []).some(r => r.letterId === letterId && !r.resolved && !r.ownerDismissed);
 }
 let gpsWatchId = null;
 let locationEnabled = true;

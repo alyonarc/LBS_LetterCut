@@ -34,7 +34,7 @@ function renderProfile() {
   const reportsSection = document.getElementById('profile-reports-section');
   const reportsListEl  = document.getElementById('reported-letters-list');
   const myReports = (window.REPORTS || []).filter(
-    r => r.letterOwnerId === window.currentUserId && !r.resolved
+    r => r.letterOwnerId === window.currentUserId && !r.resolved && !r.ownerDismissed
   );
   if (reportsSection && reportsListEl) {
     reportsSection.style.display = '';
