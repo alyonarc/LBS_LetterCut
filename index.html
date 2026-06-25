@@ -179,7 +179,7 @@
       <div id="walk-chips"><span class="wempty">tap nearby pins to collect…</span></div>
       <div id="walk-actions">
         <button onclick="undoLastLetter()">↩ Undo</button>
-        <button onclick="finishWord()">Finish word →</button>
+        <button onclick="confirmFinishWalk()">Finish word →</button>
       </div>
     </div>
   </div>
@@ -363,6 +363,20 @@
       </div>
       <button class="share-btn" onclick="sharePostcard()">Share postcard</button>
       <button class="mbtn"      onclick="closeModal('postcard-modal')">Back to map</button>
+    </div>
+  </div>
+
+  <!-- ══ FINISH WALK CONFIRMATION MODAL ══ -->
+  <div class="modal-overlay" id="finish-confirm-modal" onclick="closeModal('finish-confirm-modal')">
+    <div class="modal-sheet" onclick="event.stopPropagation()" style="max-width:480px;margin:0 auto;">
+      <div class="modal-handle"></div>
+      <div style="margin-bottom:12px;font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)">Finish walk</div>
+      <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin-bottom:10px">Finish your walk?</div>
+      <div style="font-family:'DM Sans',sans-serif;color:var(--muted);margin-bottom:18px">This will generate your postcard and clear your current word progress.</div>
+      <div style="display:flex;gap:10px;">
+        <button class="mbtn" onclick="closeModal('finish-confirm-modal')">Cancel</button>
+        <button class="mbtn pri" onclick="handleFinishConfirmed()">Finish</button>
+      </div>
     </div>
   </div>
 
