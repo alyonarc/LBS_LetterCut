@@ -25,7 +25,7 @@
   text-align: center; line-height: 1.7;
 }
 #preview-img {
-  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none;
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: none;
   transform-origin: center center; touch-action: none;
   user-select: none; -webkit-user-drag: none; cursor: grab;
 }
