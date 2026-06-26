@@ -7,7 +7,6 @@ function renderProfile() {
   document.getElementById('profile-av-letter').textContent = CURRENT_USER.avatar;
   document.getElementById('profile-name').textContent      = CURRENT_USER.name;
   document.getElementById('profile-handle').textContent    = `${CURRENT_USER.handle} · ${CURRENT_USER.city}`;
-  document.getElementById('profile-rank-badge').textContent = `★ Rank #${CURRENT_USER.rank} this week`;
 
   document.getElementById('stat-pts').textContent = "0";
   document.getElementById('stat-letters').textContent = "0";
@@ -35,18 +34,6 @@ function renderProfile() {
         document.getElementById('stat-letters').textContent = count;
     }).catch(e => console.error("Letter count error:", e));
   }
-
-  // Journey history
-  document.getElementById('journey-list').innerHTML =
-    CURRENT_USER.journeys.map(j => `
-      <div class="journey-item">
-        <div class="journey-icon">🗺️</div>
-        <div class="journey-info">
-          <div class="journey-word">${j.word}</div>
-          <div class="journey-meta">${j.date} · ${j.dist}</div>
-        </div>
-        <div class="journey-pts">+${j.pts}</div>
-      </div>`).join('');
 
   // Render reported letters section (inline cards, owner view)
   const reportsSection = document.getElementById('profile-reports-section');
