@@ -4,6 +4,120 @@
 // proximity check, word dictionary check
 // ══════════════════════════════════════════
 
+// Shared zoom/pan helper used by both the letter modal and the upload preview.
+// onUpdate(scale, tx, ty) is called on every change — upload uses it to sync
+// the module-level variables needed for crop-on-submit.
+function setupImageZoom(img, container, onUpdate, options = {}) {
+  const minScale = options.minScale ?? 1;
+
+  container.querySelectorAll('.upload-zoom-btn').forEach(b => b.remove());
+  let scale = 1, tx = 0, ty = 0;
+  img.style.transform = '';
+  img.style.cursor = 'grab';
+  img.draggable = false;
+  img.addEventListener('dragstart', e => e.preventDefault());
+
+  const btnOut = document.createElement('button');
+  const btnIn  = document.createElement('button');
+  btnOut.className = btnIn.className = 'upload-zoom-btn';
+  btnOut.textContent = '−'; btnIn.textContent = '+';
+  btnOut.type = btnIn.type = 'button';
+  container.appendChild(btnOut);
+  container.appendChild(btnIn);
+
+  const clamp = () => {
+    scale = Math.max(minScale, Math.min(5, scale));
+    if (scale <= 1) {
+      // zoomed out or at fit — keep image centred, no panning
+      tx = 0; ty = 0;
+    } else {
+      const mx = (scale - 1) * img.offsetWidth  / 2;
+      const my = (scale - 1) * img.offsetHeight / 2;
+      tx = Math.max(-mx, Math.min(mx, tx));
+      ty = Math.max(-my, Math.min(my, ty));
+    }
+  };
+  const apply = () => {
+    img.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+    if (onUpdate) onUpdate(scale, tx, ty);
+  };
+
+  btnIn.addEventListener('click', e => {
+    e.stopPropagation();
+    scale = Math.min(5, scale * 1.5);
+    clamp(); apply();
+  });
+  btnOut.addEventListener('click', e => {
+    e.stopPropagation();
+    scale = Math.max(minScale, scale / 1.5);
+    clamp(); apply();
+  });
+
+  let t0 = [], initScale, initTx, initTy, initDist, initMidX, initMidY;
+  img.addEventListener('touchstart', e => {
+    t0 = [...e.touches];
+    initScale = scale; initTx = tx; initTy = ty;
+    if (t0.length === 2) {
+      e.preventDefault();
+      initDist = Math.hypot(t0[1].clientX - t0[0].clientX, t0[1].clientY - t0[0].clientY);
+      initMidX = (t0[0].clientX + t0[1].clientX) / 2;
+      initMidY = (t0[0].clientY + t0[1].clientY) / 2;
+    } else {
+      initMidX = t0[0].clientX; initMidY = t0[0].clientY;
+    }
+  }, { passive: false });
+
+  img.addEventListener('touchmove', e => {
+    const cur = [...e.touches];
+    if (cur.length === 2) {
+      e.preventDefault();
+      const d = Math.hypot(cur[1].clientX - cur[0].clientX, cur[1].clientY - cur[0].clientY);
+      scale = initScale * (d / initDist);
+      tx = initTx + ((cur[0].clientX + cur[1].clientX) / 2 - initMidX);
+      ty = initTy + ((cur[0].clientY + cur[1].clientY) / 2 - initMidY);
+    } else if (cur.length === 1 && scale > 1) {
+      e.preventDefault();
+      tx = initTx + (cur[0].clientX - initMidX);
+      ty = initTy + (cur[0].clientY - initMidY);
+    }
+    clamp(); apply();
+  }, { passive: false });
+
+  let lastTap = 0;
+  img.addEventListener('touchend', () => {
+    const now = Date.now();
+    if (now - lastTap < 280) { scale = scale > 1 ? 1 : 2; tx = 0; ty = 0; apply(); }
+    lastTap = now;
+  });
+
+  img.addEventListener('wheel', e => {
+    e.preventDefault();
+    scale *= e.deltaY < 0 ? 1.15 : 0.87;
+    clamp(); apply();
+  }, { passive: false });
+
+  let dragging = false, dragX, dragY, dragTx, dragTy;
+  img.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'touch') return;
+    e.preventDefault();
+    img.setPointerCapture(e.pointerId);
+    dragging = true; dragX = e.clientX; dragY = e.clientY; dragTx = tx; dragTy = ty;
+    img.style.cursor = 'grabbing';
+  });
+  img.addEventListener('pointermove', e => {
+    if (!dragging || e.pointerType === 'touch') return;
+    tx = dragTx + (e.clientX - dragX);
+    ty = dragTy + (e.clientY - dragY);
+    clamp(); apply();
+  });
+  img.addEventListener('pointerup', e => {
+    if (e.pointerType === 'touch') return;
+    dragging = false;
+    img.style.cursor = 'grab';
+    img.releasePointerCapture(e.pointerId);
+  });
+}
+
 let currentLetter = null;
 let postcardWalkPath = [];
 let postcardMapInstance = null;
@@ -66,77 +180,6 @@ function openLetterModal(l, isUser) {
 
     photoEl.innerHTML = '';
     photoEl.appendChild(img);
-    photoEl.style.cursor = 'grab';
-
-    let scale = 1, tx = 0, ty = 0;
-    let activeTouches = [], initScale, initTx, initTy, initDist, initMidX, initMidY;
-
-    const clamp = () => {
-      scale = Math.max(1, Math.min(5, scale));
-      const mx = (scale - 1) * img.offsetWidth  / 2;
-      const my = (scale - 1) * img.offsetHeight / 2;
-      tx = Math.max(-mx, Math.min(mx, tx));
-      ty = Math.max(-my, Math.min(my, ty));
-    };
-    const apply = () => { img.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`; };
-
-    img.addEventListener('touchstart', e => {
-      activeTouches = [...e.touches];
-      initScale = scale; initTx = tx; initTy = ty;
-      if (activeTouches.length === 2) {
-        e.preventDefault();
-        initDist = Math.hypot(activeTouches[1].clientX - activeTouches[0].clientX, activeTouches[1].clientY - activeTouches[0].clientY);
-        initMidX = (activeTouches[0].clientX + activeTouches[1].clientX) / 2;
-        initMidY = (activeTouches[0].clientY + activeTouches[1].clientY) / 2;
-      } else {
-        initMidX = activeTouches[0].clientX;
-        initMidY = activeTouches[0].clientY;
-      }
-    }, { passive: false });
-
-    img.addEventListener('touchmove', e => {
-      const cur = [...e.touches];
-      if (cur.length === 2) {
-        e.preventDefault();
-        const dist = Math.hypot(cur[1].clientX - cur[0].clientX, cur[1].clientY - cur[0].clientY);
-        scale = initScale * (dist / initDist);
-        tx = initTx + ((cur[0].clientX + cur[1].clientX) / 2 - initMidX);
-        ty = initTy + ((cur[0].clientY + cur[1].clientY) / 2 - initMidY);
-      } else if (cur.length === 1 && scale > 1) {
-        e.preventDefault();
-        tx = initTx + (cur[0].clientX - initMidX);
-        ty = initTy + (cur[0].clientY - initMidY);
-      }
-      clamp(); apply();
-    }, { passive: false });
-
-    let lastTap = 0;
-    img.addEventListener('touchend', e => {
-      activeTouches = [...e.touches];
-      const now = Date.now();
-      if (now - lastTap < 280) { scale = scale > 1 ? 1 : 2; tx = 0; ty = 0; apply(); }
-      lastTap = now;
-    });
-
-    let dragging = false, dragX, dragY, dragTx, dragTy;
-    img.addEventListener('pointerdown', e => {
-      if (e.pointerType === 'touch') return;
-      e.preventDefault();
-      img.setPointerCapture(e.pointerId);
-      dragging = true; dragX = e.clientX; dragY = e.clientY; dragTx = tx; dragTy = ty;
-      img.style.cursor = 'grabbing';
-    });
-    img.addEventListener('pointermove', e => {
-      if (!dragging || e.pointerType === 'touch') return;
-      tx = dragTx + (e.clientX - dragX);
-      ty = dragTy + (e.clientY - dragY);
-      clamp(); apply();
-    });
-    img.addEventListener('pointerup', e => {
-      if (e.pointerType === 'touch') return;
-      dragging = false; img.style.cursor = 'grab';
-      img.releasePointerCapture(e.pointerId);
-    });
   } else {
     photoEl.innerHTML = '';
     photoEl.textContent = '📷';
