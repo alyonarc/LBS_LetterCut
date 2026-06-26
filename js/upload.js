@@ -40,101 +40,10 @@ function compressImage(file, maxWidth = 600, quality = 0.6) {
 }
 
 function setupPhotoZoom(img) {
-  const zone = document.getElementById('photo-zone');
-  zone.querySelectorAll('.upload-zoom-btn').forEach(b => b.remove());
   photoScale = 1; photoTx = 0; photoTy = 0;
-  img.style.transform = '';
-  img.style.cursor = 'grab';
-
-  const btnOut = document.createElement('button');
-  const btnIn  = document.createElement('button');
-  btnOut.className = btnIn.className = 'upload-zoom-btn';
-  btnOut.textContent = '−'; btnIn.textContent = '+';
-  btnOut.type = btnIn.type = 'button';
-  zone.appendChild(btnOut);
-  zone.appendChild(btnIn);
-
-  img.draggable = false;
-  img.addEventListener('dragstart', e => e.preventDefault());
-
-  const clamp = () => {
-    photoScale = Math.max(1, Math.min(5, photoScale));
-    const mx = (photoScale - 1) * img.offsetWidth  / 2;
-    const my = (photoScale - 1) * img.offsetHeight / 2;
-    photoTx = Math.max(-mx, Math.min(mx, photoTx));
-    photoTy = Math.max(-my, Math.min(my, photoTy));
-  };
-  const apply = () => {
-    img.style.transform = `translate(${photoTx}px,${photoTy}px) scale(${photoScale})`;
-  };
-
-  btnIn.addEventListener('click',  e => { e.stopPropagation(); photoScale = Math.min(5, photoScale * 1.5); clamp(); apply(); });
-  btnOut.addEventListener('click', e => { e.stopPropagation(); photoScale = Math.max(1, photoScale / 1.5); if (photoScale <= 1) { photoTx = 0; photoTy = 0; } clamp(); apply(); });
-
-  // Pinch-to-zoom + single-finger drag
-  let t0 = [], initScale, initTx, initTy, initDist, initMidX, initMidY;
-  img.addEventListener('touchstart', e => {
-    t0 = [...e.touches];
-    initScale = photoScale; initTx = photoTx; initTy = photoTy;
-    if (t0.length === 2) {
-      e.preventDefault();
-      initDist = Math.hypot(t0[1].clientX - t0[0].clientX, t0[1].clientY - t0[0].clientY);
-      initMidX = (t0[0].clientX + t0[1].clientX) / 2;
-      initMidY = (t0[0].clientY + t0[1].clientY) / 2;
-    } else {
-      initMidX = t0[0].clientX; initMidY = t0[0].clientY;
-    }
-  }, { passive: false });
-
-  img.addEventListener('touchmove', e => {
-    const cur = [...e.touches];
-    if (cur.length === 2) {
-      e.preventDefault();
-      const d = Math.hypot(cur[1].clientX - cur[0].clientX, cur[1].clientY - cur[0].clientY);
-      photoScale = initScale * (d / initDist);
-      photoTx = initTx + ((cur[0].clientX + cur[1].clientX) / 2 - initMidX);
-      photoTy = initTy + ((cur[0].clientY + cur[1].clientY) / 2 - initMidY);
-    } else if (cur.length === 1 && photoScale > 1) {
-      e.preventDefault();
-      photoTx = initTx + (cur[0].clientX - initMidX);
-      photoTy = initTy + (cur[0].clientY - initMidY);
-    }
-    clamp(); apply();
-  }, { passive: false });
-
-  let lastTap = 0;
-  img.addEventListener('touchend', () => {
-    const now = Date.now();
-    if (now - lastTap < 280) { photoScale = photoScale > 1 ? 1 : 2; photoTx = 0; photoTy = 0; apply(); }
-    lastTap = now;
-  });
-
-  // Mouse wheel zoom
-  img.addEventListener('wheel', e => {
-    e.preventDefault();
-    photoScale *= e.deltaY < 0 ? 1.15 : 0.87;
-    clamp(); apply();
-  }, { passive: false });
-
-  // Mouse drag
-  let dragging = false, dragX, dragY, dragTx, dragTy;
-  img.addEventListener('pointerdown', e => {
-    if (e.pointerType === 'touch') return;
-    e.preventDefault(); img.setPointerCapture(e.pointerId);
-    dragging = true; dragX = e.clientX; dragY = e.clientY; dragTx = photoTx; dragTy = photoTy;
-    img.style.cursor = 'grabbing';
-  });
-  img.addEventListener('pointermove', e => {
-    if (!dragging || e.pointerType === 'touch') return;
-    photoTx = dragTx + (e.clientX - dragX);
-    photoTy = dragTy + (e.clientY - dragY);
-    clamp(); apply();
-  });
-  img.addEventListener('pointerup', e => {
-    if (e.pointerType === 'touch') return;
-    dragging = false; img.style.cursor = 'grab';
-    img.releasePointerCapture(e.pointerId);
-  });
+  setupImageZoom(img, document.getElementById('photo-zone'),
+    (s, x, y) => { photoScale = s; photoTx = x; photoTy = y; },
+    { minScale: 0.25 });
 }
 
 async function previewPhoto(e) {
@@ -196,7 +105,7 @@ async function submitLetter() {
     return;
   }
 
-  // Re-render the visible portion of the photo if the user zoomed/panned
+  // Re-render what the user sees (contain-fit + zoom/pan) into a canvas for saving
   if (uploadPhotoUrl && (photoScale !== 1 || photoTx !== 0 || photoTy !== 0)) {
     const pImg = document.getElementById('preview-img');
     const zone = document.getElementById('photo-zone');
@@ -205,7 +114,11 @@ async function submitLetter() {
     const canvas = document.createElement('canvas');
     canvas.width = zW; canvas.height = zH;
     const ctx = canvas.getContext('2d');
-    const cs = Math.max(zW / iW, zH / iH);
+    // Fill background (visible when image is zoomed out / narrow)
+    ctx.fillStyle = '#faf8f4';
+    ctx.fillRect(0, 0, zW, zH);
+    // contain scale — matches object-fit: contain
+    const cs = Math.min(zW / iW, zH / iH);
     ctx.translate(zW / 2 + photoTx, zH / 2 + photoTy);
     ctx.scale(photoScale, photoScale);
     ctx.translate(-zW / 2, -zH / 2);
